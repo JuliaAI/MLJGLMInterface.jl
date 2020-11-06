@@ -1,7 +1,7 @@
 # MLJ <> GLM.jl
 
 Repository implementing MLJ interface for 
-[GLM](https://github.com/bensadeghi/GLM.jl) models.
+[GLM](https://github.com/JuliaStats/GLM.jl) models.
 
 
 [![Build Status](https://travis-ci.com/alan-turing-institute/MLJGLMInterface.jl.svg?branch=master)](https://travis-ci.com/github/alan-turing-institute/MLJGLMInterface.jl)
