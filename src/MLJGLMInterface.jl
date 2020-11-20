@@ -186,36 +186,41 @@ end
 ####
 
 # shared metadata
-const GLM_REGS = Union{Type{<:LinearRegressor}, Type{<:LinearBinaryClassifier}, Type{<:LinearCountRegressor}}
+const GLM_REGS = Union{Type{<:LinearRegressor},
+                       Type{<:LinearBinaryClassifier},
+                       Type{<:LinearCountRegressor}}
 
 metadata_pkg.((LinearRegressor, LinearBinaryClassifier, LinearCountRegressor),
-    name       = "GLM",
-    uuid       = "38e38edf-8417-5370-95a0-9cbb8c7f171a",
-    url        = "https://github.com/JuliaStats/GLM.jl",
-    julia      = true,
-    license    = "MIT",
-    is_wrapper = false
-    )
+              name       = "GLM",
+              uuid       = "38e38edf-8417-5370-95a0-9cbb8c7f171a",
+              url        = "https://github.com/JuliaStats/GLM.jl",
+              julia      = true,
+              license    = "MIT",
+              is_wrapper = false
+              )
 
 metadata_model(LinearRegressor,
-    input   = Table(Continuous),
-    target  = AbstractVector{Continuous},
-    weights = false,
-    descr   = LR_DESCR
-    )
+               input   = Table(Continuous),
+               target  = AbstractVector{Continuous},
+               weights = false,
+               descr   = LR_DESCR,
+               path    = "$PKG.LinearRegressor"
+               )
 
 metadata_model(LinearBinaryClassifier,
-    input   = Table(Continuous),
-    target  = AbstractVector{<:Finite{2}},
-    weights = false,
-    descr   = LBC_DESCR
-    )
+               input   = Table(Continuous),
+               target  = AbstractVector{<:Finite{2}},
+               weights = false,
+               descr   = LBC_DESCR,
+               path    = "$PKG.LinearBinaryClassifier"
+               )
 
 metadata_model(LinearCountRegressor,
-    input   = Table(Continuous),
-    target  = AbstractVector{Count},
-    weights = false,
-    descr   = LCR_DESCR
-    )
+               input   = Table(Continuous),
+               target  = AbstractVector{Count},
+               weights = false,
+               descr   = LCR_DESCR,
+               path    = "$PKG.LinearCountRegressor"
+               )
 
 end # module
