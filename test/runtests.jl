@@ -38,16 +38,15 @@ p2 = Xa1[test, :] * coefs
 
 @test p ≈ p2
 
-infos = info_dict(atom_ols)
-
-@test infos[:name] == "LinearRegressor"
-@test infos[:package_name] == "GLM"
-@test infos[:is_pure_julia]
-@test infos[:is_supervised]
-@test infos[:package_license] == "MIT"
-@test infos[:prediction_type] == :probabilistic
-@test infos[:hyperparameters] == (:fit_intercept, :allowrankdeficient)
-@test infos[:hyperparameter_types] == ("Bool", "Bool")
+model = atom_ols
+@test name(model) == "LinearRegressor"
+@test package_name(model) == "GLM"
+@test is_pure_julia(model)
+@test is_supervised(model)
+@test package_license(model) == "MIT"
+@test prediction_type(model) == :probabilistic
+@test hyperparameters(model) == (:fit_intercept, :allowrankdeficient)
+@test hyperparameter_types(model) == ("Bool", "Bool")
 
 p_distr = predict(atom_ols, fitresult, selectrows(X, test))
 
