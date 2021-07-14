@@ -102,12 +102,38 @@ fitresult, _, _ = fit(lcr, 1, XTable, y)
 @test norm(θ̂ .- θ)/norm(θ) ≤ 0.03
 
 
+modeltypes = [LinearRegressor, LinearBinaryClassifier, LinearCountRegressor]
+@testset "Test prepare_inputs" begin
+    @testset "intercept/offsetcol" for mt in modeltypes
+            X = (x1=[1,2,3], x2=[4,5,6])
+            m = mt(fit_intercept=true, offsetcol=:x2)
+            Xmatrix, offset = MLJGLMInterface.prepare_inputs(m, X)
+
+            @test offset == [4, 5, 6]
+            @test Xmatrix== [1 1;
+                             2 1;
+                             3 1]
+    end
+
+    @testset "no intercept/no offsetcol" for mt in modeltypes
+        X = (x1=[1,2,3], x2=[4,5,6])
+        m = mt(fit_intercept=false)
+        Xmatrix, offset = MLJGLMInterface.prepare_inputs(m, X)
+
+        @test offset == []
+        @test Xmatrix == [1 4;
+                          2 5;
+                          3 6]
+    end
+
+end
+
 
 @testset "Test offsetting models" begin
     @testset "Test split_X_offset" begin
-        X = (toto=[1,2,3], tata=[4,5,6])
+        X = (x1=[1,2,3], x2=[4,5,6])
         @test MLJGLMInterface.split_X_offset(X, nothing) == (X, Float64[])
-        @test MLJGLMInterface.split_X_offset(X, :toto) == ((tata=[4,5,6],), [1,2,3])
+        @test MLJGLMInterface.split_X_offset(X, :x1) == ((x2=[4,5,6],), [1,2,3])
 
         X = MLJBase.table(rand(rng, N, 3))
         Xnew, offset = MLJGLMInterface.split_X_offset(X, :x2)
