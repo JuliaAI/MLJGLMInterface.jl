@@ -55,9 +55,18 @@ function augment_X(X::Matrix, b::Bool)::Matrix
     return X
 end
 
-
+"""
+When no offset is specied, return X and an empty vector
+"""
 split_X_offset(X, offsetcol::Nothing) = (X, Float64[])
 
+"""
+    split_X_offset(X, offsetcol::Symbol)
+
+Splits the input table X in:
+    - A new table not containing the original offset column
+    - The offset vector extracted from the table
+"""
 function split_X_offset(X, offsetcol::Symbol)
     ct = Tables.columntable(X)
     offset = Tables.getcolumn(ct, offsetcol)
