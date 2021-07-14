@@ -13,7 +13,6 @@ module MLJGLMInterface
 # - test Logit, Probit etc on Binomial once binomial case is handled
 # -------------------------------------------------------------------
 
-using Base: offset_if_vec
 export LinearRegressor, LinearBinaryClassifier, LinearCountRegressor
 
 import MLJModelInterface
