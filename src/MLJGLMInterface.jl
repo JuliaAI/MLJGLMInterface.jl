@@ -80,6 +80,12 @@ function prepare_inputs(model, X)
     return Xmatrix, offset
 end
 
+
+function prepare_data(model, X, y)
+    Xmatrix, offset = prepare_inputs(model, X)
+    return convert(Vector, y), Xmatrix, offset
+end
+
 """
 glm_report(fitresult)
 
@@ -129,8 +135,8 @@ const GLM_MODELS = Union{<:LinearRegressor, <:LinearBinaryClassifier, <:LinearCo
 
 function MMI.fit(model::LinearRegressor, verbosity::Int, X, y)
     # apply the model
-    Xmatrix, offset = prepare_inputs(model, X)
-    fitresult = GLM.glm(Xmatrix, y, Distributions.Normal(), GLM.IdentityLink(); offset=offset)
+    yvec, Xmatrix, offset = prepare_data(model, X, y)
+    fitresult = GLM.glm(Xmatrix, yvec, Distributions.Normal(), GLM.IdentityLink(); offset=offset)
     # form the report
     report    = glm_report(fitresult)
     cache     = nothing
@@ -140,8 +146,8 @@ end
 
 function MMI.fit(model::LinearCountRegressor, verbosity::Int, X, y)
     # apply the model
-    Xmatrix, offset = prepare_inputs(model, X)
-    fitresult = GLM.glm(Xmatrix, y, model.distribution, model.link; offset=offset)
+    yvec, Xmatrix, offset = prepare_data(model, X, y)
+    fitresult = GLM.glm(Xmatrix, yvec, model.distribution, model.link; offset=offset)
     # form the report
     report    = glm_report(fitresult)
     cache     = nothing
@@ -151,9 +157,9 @@ end
 
 function MMI.fit(model::LinearBinaryClassifier, verbosity::Int, X, y)
     # apply the model
-    Xmatrix, offset = prepare_inputs(model, X)
-    decode    = y[1]
-    y_plain   = MMI.int(y) .- 1 # 0, 1 of type Int
+    yvec, Xmatrix, offset = prepare_data(model, X, y)
+    decode    = yvec[1]
+    y_plain   = MMI.int(yvec) .- 1 # 0, 1 of type Int
     fitresult = GLM.glm(Xmatrix, y_plain, Distributions.Bernoulli(), model.link; offset=offset)
     # form the report
     report    = glm_report(fitresult)

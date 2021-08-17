@@ -55,6 +55,13 @@ p_distr = predict(atom_ols, fitresult, selectrows(X, test))
 
 @test p_distr[1] == Distributions.Normal(p[1], GLM.dispersion(fitresult))
 
+# Check the machine fit! will work with matrix views
+# Here y is a view from a matrix which is not inherently 
+#supported by GLMs
+
+mach = machine(atom_ols, X, y)
+fit!(mach)
+
 ###
 ### Logistic regression
 ###
