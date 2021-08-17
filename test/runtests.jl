@@ -57,7 +57,7 @@ p_distr = predict(atom_ols, fitresult, selectrows(X, test))
 
 # Check the machine fit! will work with matrix views
 # Here y is a view from a matrix which is not inherently 
-#supported by GLMs
+# supported by GLMs
 
 mach = machine(atom_ols, X, y)
 fit!(mach)
@@ -114,7 +114,7 @@ modeltypes = [LinearRegressor, LinearBinaryClassifier, LinearCountRegressor]
     @testset "intercept/offsetcol" for mt in modeltypes
             X = (x1=[1,2,3], x2=[4,5,6])
             m = mt(fit_intercept=true, offsetcol=:x2)
-            Xmatrix, offset = MLJGLMInterface.prepare_inputs(m, X)
+            Xmatrix, offset = MLJGLMInterface.prepare_data_predict(m, X)
 
             @test offset == [4, 5, 6]
             @test Xmatrix== [1 1;
@@ -125,7 +125,7 @@ modeltypes = [LinearRegressor, LinearBinaryClassifier, LinearCountRegressor]
     @testset "no intercept/no offsetcol" for mt in modeltypes
         X = (x1=[1,2,3], x2=[4,5,6])
         m = mt(fit_intercept=false)
-        Xmatrix, offset = MLJGLMInterface.prepare_inputs(m, X)
+        Xmatrix, offset = MLJGLMInterface.prepare_data_predict(m, X)
 
         @test offset == []
         @test Xmatrix == [1 4;

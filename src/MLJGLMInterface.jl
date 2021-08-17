@@ -74,15 +74,15 @@ function split_X_offset(X, offsetcol::Symbol)
 end
 
 
-function prepare_inputs(model, X)
+function prepare_data_predict(model, X)
     Xminoffset, offset = split_X_offset(X, model.offsetcol)
     Xmatrix   = augment_X(MMI.matrix(Xminoffset), model.fit_intercept)
     return Xmatrix, offset
 end
 
 
-function prepare_data(model, X, y)
-    Xmatrix, offset = prepare_inputs(model, X)
+function prepare_data_fit(model, X, y)
+    Xmatrix, offset = prepare_data_predict(model, X)
     return convert(Vector, y), Xmatrix, offset
 end
 
@@ -135,7 +135,7 @@ const GLM_MODELS = Union{<:LinearRegressor, <:LinearBinaryClassifier, <:LinearCo
 
 function MMI.fit(model::LinearRegressor, verbosity::Int, X, y)
     # apply the model
-    yvec, Xmatrix, offset = prepare_data(model, X, y)
+    yvec, Xmatrix, offset = prepare_data_fit(model, X, y)
     fitresult = GLM.glm(Xmatrix, yvec, Distributions.Normal(), GLM.IdentityLink(); offset=offset)
     # form the report
     report    = glm_report(fitresult)
@@ -146,7 +146,7 @@ end
 
 function MMI.fit(model::LinearCountRegressor, verbosity::Int, X, y)
     # apply the model
-    yvec, Xmatrix, offset = prepare_data(model, X, y)
+    yvec, Xmatrix, offset = prepare_data_fit(model, X, y)
     fitresult = GLM.glm(Xmatrix, yvec, model.distribution, model.link; offset=offset)
     # form the report
     report    = glm_report(fitresult)
@@ -157,7 +157,7 @@ end
 
 function MMI.fit(model::LinearBinaryClassifier, verbosity::Int, X, y)
     # apply the model
-    yvec, Xmatrix, offset = prepare_data(model, X, y)
+    yvec, Xmatrix, offset = prepare_data_fit(model, X, y)
     decode    = yvec[1]
     y_plain   = MMI.int(yvec) .- 1 # 0, 1 of type Int
     fitresult = GLM.glm(Xmatrix, y_plain, Distributions.Bernoulli(), model.link; offset=offset)
@@ -185,12 +185,12 @@ end
 
 # more efficient than MLJBase fallback
 function MMI.predict_mean(model::Union{LinearRegressor,<:LinearCountRegressor}, fitresult, Xnew)
-    Xmatrix, offset = prepare_inputs(model, Xnew)
+    Xmatrix, offset = prepare_data_predict(model, Xnew)
     return GLM.predict(fitresult, Xmatrix; offset=offset)
 end
 
 function MMI.predict_mean(model::LinearBinaryClassifier, (fitresult, _), Xnew)
-    Xmatrix, offset = prepare_inputs(model, Xnew)
+    Xmatrix, offset = prepare_data_predict(model, Xnew)
     return GLM.predict(fitresult, Xmatrix; offset=offset)
 end
 
