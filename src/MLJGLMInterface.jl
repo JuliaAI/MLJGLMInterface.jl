@@ -89,18 +89,7 @@ function prepare_inputs(model, X; handle_intercept=false)
 end
 
 """
-    glm_data(model, Xmatrix, X, y)
-
-Return data which is ready to be passed to `fit(form, data, ...)`.
-"""
-function glm_data(model, Xmatrix, X, y)
-    header = collect(filter(x -> x != model.offsetcol, keys(X)))
-    data = Tables.table([Xmatrix y]; header=[header; :y])
-    return data
-end
-
-"""
-glm_report(fitresult)
+    glm_report(fitresult)
 
 Report based on the `fitresult` of a GLM model.
 """
@@ -145,7 +134,7 @@ const GLM_MODELS = Union{<:LinearRegressor, <:LinearBinaryClassifier, <:LinearCo
 """
     glm_formula(model, X) -> FormulaTerm
 
-Return formula which can be passed to `fit(formula, data, ...)`.
+Return formula which is ready to be passed to `fit(form, data, ...)`.
 """
 function glm_formula(model, X)::FormulaTerm
     # By default, using a JuliaStats formula will add an intercept.
@@ -154,6 +143,17 @@ function glm_formula(model, X)::FormulaTerm
     intercept_term = model.fit_intercept ? 1 : 0
     form = GLM.Term(:y) ~ sum(GLM.term.(keys(X))) + GLM.term(intercept_term)
     return form
+end
+
+"""
+    glm_data(model, Xmatrix, X, y)
+
+Return data which is ready to be passed to `fit(form, data, ...)`.
+"""
+function glm_data(model, Xmatrix, X, y)
+    header = collect(filter(x -> x != model.offsetcol, keys(X)))
+    data = Tables.table([Xmatrix y]; header=[header; :y])
+    return data
 end
 
 """
