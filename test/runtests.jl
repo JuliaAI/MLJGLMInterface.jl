@@ -65,7 +65,7 @@ rng = StableRNGs.StableRNG(0)
 N = 100
 X = MLJBase.table(rand(rng, N, 4));
 ycont = 2*X.x1 - X.x3 + 0.6*rand(rng, N)
-y = (ycont .> mean(ycont)) |> categorical;
+y = categorical(ycont .> mean(ycont))
 
 lr = LinearBinaryClassifier()
 fitresult, _, report = fit(lr, 1, X, y)
@@ -187,14 +187,15 @@ end
     end
 end
 
-@testset "Fitted param names" begin
-    # Test whether the names `a` and `b` are passed to `fitresult`.
-    X = (a=[1,2,3], b=[4,5,6], c=[9,7,11])
-    y = categorical([true, true, false])
-    lr = LinearBinaryClassifier(fit_intercept=false)
+@testset "Param names in fitresult" begin
+    X = (a=[1, 9, 4, 2], b=[1, 2, 1, 4], c=[9, 1, 5, 3])
+    y = categorical([true, true, false, false])
+    lr = LinearBinaryClassifier(fit_intercept=true)
     fitresult, _, _ = fit(lr, 1, X, y)
     glmresult = first(fitresult)
     ctable = coeftable(glmresult)
     parameters = ctable.rownms
     @test parameters == ["a", "b", "c"]
+    yhat = predict(lr, fitresult, X)
+    @test mean(cross_entropy(yhat, y)) < 0.25
 end
