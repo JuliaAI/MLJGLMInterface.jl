@@ -108,7 +108,7 @@ modeltypes = [LinearRegressor, LinearBinaryClassifier, LinearCountRegressor]
     @testset "intercept/offsetcol" for mt in modeltypes
             X = (x1=[1,2,3], x2=[4,5,6])
             m = mt(fit_intercept=true, offsetcol=:x2)
-            Xmatrix, offset = MLJGLMInterface.prepare_inputs(m, X)
+            Xmatrix, offset = MLJGLMInterface.prepare_inputs(m, X; handle_intercept=true)
 
             @test offset == [4, 5, 6]
             @test Xmatrix== [1 1;
@@ -119,7 +119,7 @@ modeltypes = [LinearRegressor, LinearBinaryClassifier, LinearCountRegressor]
     @testset "no intercept/no offsetcol" for mt in modeltypes
         X = (x1=[1,2,3], x2=[4,5,6])
         m = mt(fit_intercept=false)
-        Xmatrix, offset = MLJGLMInterface.prepare_inputs(m, X)
+        Xmatrix, offset = MLJGLMInterface.prepare_inputs(m, X; handle_intercept=true)
 
         @test offset == []
         @test Xmatrix == [1 4;
@@ -192,10 +192,9 @@ end
     y = categorical([true, true, false, false])
     lr = LinearBinaryClassifier(fit_intercept=true)
     fitresult, _, _ = fit(lr, 1, X, y)
-    glmresult = first(fitresult)
-    ctable = coeftable(glmresult)
+    ctable = coeftable(first(fitresult))
     parameters = ctable.rownms
-    @test parameters == ["a", "b", "c"]
+    @test parameters == ["a", "b", "c", "(Intercept)"]
     yhat = predict(lr, fitresult, X)
-    @test mean(cross_entropy(yhat, y)) < 0.25
+    @test mean(cross_entropy(yhat, y)) < 0.6
 end

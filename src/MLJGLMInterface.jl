@@ -43,6 +43,16 @@ const LCR_DESCR = "Linear count regressor with specified "*
 ###
 
 """
+augment_X(X, b)
+Augment the matrix `X` with a column of ones if the intercept is to be
+fitted (`b=true`), return `X` otherwise.
+"""
+function augment_X(X::Matrix, b::Bool)::Matrix
+    b && return hcat(X, ones(eltype(X), size(X, 1), 1))
+    return X
+end
+
+"""
     split_X_offset(X, offsetcol::Nothing)
 
 When no offset is specied, return X and an empty vector.
@@ -64,13 +74,17 @@ function split_X_offset(X, offsetcol::Symbol)
 end
 
 """
-    prepare_inputs(model, X; y=nothing)
+    prepare_inputs(model, X; handle_intercept=false)
 
-Handle `model.offsetcol`.
+Handle `model.offsetcol` and `model.fit_intercept` if `handle_intercept=true`.
+`handle_intercept` is disabled for fitting since the StatsModels.@formula handles the intercept.
 """
-function prepare_inputs(model, X)
+function prepare_inputs(model, X; handle_intercept=false)
     Xminoffset, offset = split_X_offset(X, model.offsetcol)
     Xmatrix = MMI.matrix(Xminoffset)
+    if handle_intercept
+        Xmatrix = augment_X(Xmatrix, model.fit_intercept)
+    end
     return Xmatrix, offset
 end
 
@@ -200,9 +214,9 @@ function MMI.fit(model::LinearBinaryClassifier, verbosity::Int, X, y)
     return (fitresult, decode), cache, report
 end
 
-glm_fitresult(::LinearRegressor, fitresult)  = fitresult
-glm_fitresult(::LinearCountRegressor, fitresult)  = fitresult
-glm_fitresult(::LinearBinaryClassifier, fitresult)  = fitresult[1]
+glm_fitresult(::LinearRegressor, fitresult) = fitresult
+glm_fitresult(::LinearCountRegressor, fitresult) = fitresult
+glm_fitresult(::LinearBinaryClassifier, fitresult) = fitresult[1]
 
 function MMI.fitted_params(model::GLM_MODELS, fitresult)
     coefs = GLM.coef(glm_fitresult(model,fitresult))
@@ -217,15 +231,12 @@ end
 
 # more efficient than MLJBase fallback
 function MMI.predict_mean(model::Union{LinearRegressor,<:LinearCountRegressor}, fitresult, Xnew)
-    Xmatrix, offset = prepare_inputs(model, Xnew)
+    Xmatrix, offset = prepare_inputs(model, Xnew; handle_intercept=true)
     return GLM.predict(fitresult, Xmatrix; offset=offset)
 end
 
 function MMI.predict_mean(model::LinearBinaryClassifier, (fitresult, _), Xnew)
-    Xmatrix, offset = prepare_inputs(model, Xnew)
-    @show fitresult
-    @show size(Xmatrix)
-    @show keys(Xnew) |> length
+    Xmatrix, offset = prepare_inputs(model, Xnew; handle_intercept=true)
     return GLM.predict(fitresult.model, Xmatrix; offset=offset)
 end
 
