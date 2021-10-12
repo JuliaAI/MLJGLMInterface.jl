@@ -54,7 +54,7 @@ model = atom_ols
 
 p_distr = predict(atom_ols, fitresult, selectrows(X, test))
 
-@test p_distr[1] == Distributions.Normal(p[1], GLM.dispersion(fitresult))
+@test p_distr[1] == Distributions.Normal(p[1], GLM.dispersion(fitresult.model))
 
 ###
 ### Logistic regression

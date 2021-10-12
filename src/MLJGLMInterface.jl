@@ -13,7 +13,6 @@ module MLJGLMInterface
 # -------------------------------------------------------------------
 
 export LinearRegressor, LinearBinaryClassifier, LinearCountRegressor
-export FormulaRegressor
 
 import MLJModelInterface
 import MLJModelInterface: metadata_pkg, metadata_model,
@@ -44,19 +43,9 @@ const LCR_DESCR = "Linear count regressor with specified "*
 ###
 
 """
-augment_X(X, b)
+    split_X_offset(X, offsetcol::Nothing)
 
-Augment the matrix `X` with a column of ones if the intercept is to be
-fitted (`b=true`), return `X` otherwise.
-
-"""
-function augment_X(X::Matrix, b::Bool)::Matrix
-    b && return hcat(X, ones(eltype(X), size(X, 1), 1))
-    return X
-end
-
-"""
-When no offset is specied, return X and an empty vector
+When no offset is specied, return X and an empty vector.
 """
 split_X_offset(X, offsetcol::Nothing) = (X, Float64[])
 
@@ -74,11 +63,17 @@ function split_X_offset(X, offsetcol::Symbol)
     return newX, Vector(offset)
 end
 
+"""
+    prepare_inputs(model, X, y)
 
-function prepare_inputs(model, X)
+Handle `model.offsetcol` and prepare data for `fit(form, data)`.
+"""
+function prepare_inputs(model, X, y)
     Xminoffset, offset = split_X_offset(X, model.offsetcol)
-    Xmatrix   = augment_X(MMI.matrix(Xminoffset), model.fit_intercept)
-    return Xmatrix, offset
+    Xmatrix = MMI.matrix(Xminoffset)
+    header = collect(filter(x -> x != model.offsetcol, keys(X)))
+    data = Tables.table([Xmatrix y]; header=[header; :y])
+    return data, offset
 end
 
 """
@@ -142,10 +137,11 @@ end
     glm_data(X, Xmatrix, y)
 
 Return data which can be passed to `fit(formula, data, ...)`.
+This should return a MatrixTable always, since NamedTuples cannot handle tensors.
 """
 function glm_data(X, Xmatrix, y)
     names = keys(X)
-    Xupdated = NamedTuple([names[i] => Xmatrix[i, :] for i in 1:length(names)])
+    Xupdated = NamedTuple([names[i] => Xmatrix[:, i] for i in 1:length(names)])
     data = (; Xupdated..., y=y)
     return data
 end
@@ -156,8 +152,9 @@ end
 
 function MMI.fit(model::LinearRegressor, verbosity::Int, X, y)
     # apply the model
-    Xmatrix, offset = prepare_inputs(model, X)
-    fitresult = GLM.glm(Xmatrix, y, Distributions.Normal(), GLM.IdentityLink(); offset=offset)
+    data, offset = prepare_inputs(model, X, y)
+    form = glm_formula(model, X)
+    fitresult = GLM.glm(form, data, Distributions.Normal(), GLM.IdentityLink(); offset=offset)
     # form the report
     report    = glm_report(fitresult)
     cache     = nothing
@@ -167,8 +164,9 @@ end
 
 function MMI.fit(model::LinearCountRegressor, verbosity::Int, X, y)
     # apply the model
-    Xmatrix, offset = prepare_inputs(model, X)
-    fitresult = GLM.glm(Xmatrix, y, model.distribution, model.link; offset=offset)
+    data, offset = prepare_inputs(model, X, y)
+    form = glm_formula(model, X)
+    fitresult = GLM.glm(form, data, model.distribution, model.link; offset=offset)
     # form the report
     report    = glm_report(fitresult)
     cache     = nothing
@@ -178,13 +176,10 @@ end
 
 function MMI.fit(model::LinearBinaryClassifier, verbosity::Int, X, y)
     # apply the model
-    Xmatrix, offset = prepare_inputs(model, X)
+    data, offset = prepare_inputs(model, X, y)
     decode = y[1]
     y_plain = MMI.int(y) .- 1 # 0, 1 of type Int
     form = glm_formula(model, X)
-    data = glm_data(X, Xmatrix, y_plain)
-    @show form
-    @show data
     fitresult = GLM.glm(form, data, Distributions.Bernoulli(), model.link; offset=offset)
     # form the report
     report = glm_report(fitresult)
@@ -221,7 +216,7 @@ end
 
 function MMI.predict(model::LinearRegressor, fitresult, Xnew)
     μ = MMI.predict_mean(model, fitresult, Xnew)
-    σ̂ = GLM.dispersion(fitresult)
+    σ̂ = GLM.dispersion(fitresult.model)
     return [GLM.Normal(μᵢ, σ̂) for μᵢ ∈ μ]
 end
 
