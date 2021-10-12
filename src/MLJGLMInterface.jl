@@ -156,19 +156,6 @@ function glm_data(model, Xmatrix, X, y)
     return data
 end
 
-"""
-    glm_data(X, Xmatrix, y)
-
-Return data which can be passed to `fit(formula, data, ...)`.
-This should return a MatrixTable always, since NamedTuples cannot handle tensors.
-"""
-function glm_data(X, Xmatrix, y)
-    names = keys(X)
-    Xupdated = NamedTuple([names[i] => Xmatrix[:, i] for i in 1:length(names)])
-    data = (; Xupdated..., y=y)
-    return data
-end
-
 ####
 #### FIT FUNCTIONS
 ####
