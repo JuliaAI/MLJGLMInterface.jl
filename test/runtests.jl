@@ -4,6 +4,7 @@ using MLJBase
 using LinearAlgebra
 using Statistics
 using MLJGLMInterface
+using GLM: coeftable
 import GLM
 
 import Distributions
@@ -141,10 +142,10 @@ end
         @test length(Xnew) == 2
     end
 
-    # In the following:
-    # The second column is taken as an offset by the model
-    # This is equivalent to assuming the coef is 1 and known 
-    
+    # In the following:
+    # The second column is taken as an offset by the model
+    # This is equivalent to assuming the coef is 1 and known
+
     @testset "Test Logistic regression with offset" begin
         N = 1000
         rng = StableRNGs.StableRNG(0)
@@ -184,4 +185,16 @@ end
 
         @test fp.coef ≈ [2, -1] atol=0.04
     end
+end
+
+@testset "Fitted param names" begin
+    # Test whether the names `a` and `b` are passed to `fitresult`.
+    X = (a=[1,2,3], b=[4,5,6], c=[9,7,11])
+    y = categorical([true, true, false])
+    lr = LinearBinaryClassifier(fit_intercept=false)
+    fitresult, _, _ = fit(lr, 1, X, y)
+    glmresult = first(fitresult)
+    ctable = coeftable(glmresult)
+    parameters = ctable.rownms
+    @test parameters == ["a", "b", "c"]
 end

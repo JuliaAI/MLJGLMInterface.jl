@@ -2,7 +2,6 @@ module MLJGLMInterface
 
 # -------------------------------------------------------------------
 # TODO
-# - return feature names in the report
 # - return feature importance curve to report using `features`
 # - handle binomial case properly, needs MLJ API change for weighted
 # samples (y/N ~ Be(p) with weights N)
@@ -14,6 +13,7 @@ module MLJGLMInterface
 # -------------------------------------------------------------------
 
 export LinearRegressor, LinearBinaryClassifier, LinearCountRegressor
+export FormulaRegressor
 
 import MLJModelInterface
 import MLJModelInterface: metadata_pkg, metadata_model,
@@ -22,6 +22,7 @@ import MLJModelInterface: metadata_pkg, metadata_model,
 import Distributions
 using Tables
 import GLM
+using GLM: FormulaTerm
 using Parameters
 
 const MMI = MLJModelInterface
@@ -123,6 +124,32 @@ end
 
 const GLM_MODELS = Union{<:LinearRegressor, <:LinearBinaryClassifier, <:LinearCountRegressor}
 
+"""
+    glm_formula(model, X) -> FormulaTerm
+
+Return formula which can be passed to `fit(formula, data, ...)`.
+"""
+function glm_formula(model, X)::FormulaTerm
+    # By default, using a JuliaStats formula will add an intercept.
+    # Adding a zero term explicitly disables the intercept.
+    # See the StatsModels.jl tests for more information.
+    intercept_term = model.fit_intercept ? 1 : 0
+    form = GLM.Term(:y) ~ sum(GLM.term.(keys(X))) + GLM.term(intercept_term)
+    return form
+end
+
+"""
+    glm_data(X, Xmatrix, y)
+
+Return data which can be passed to `fit(formula, data, ...)`.
+"""
+function glm_data(X, Xmatrix, y)
+    names = keys(X)
+    Xupdated = NamedTuple([names[i] => Xmatrix[i, :] for i in 1:length(names)])
+    data = (; Xupdated..., y=y)
+    return data
+end
+
 ####
 #### FIT FUNCTIONS
 ####
@@ -152,12 +179,16 @@ end
 function MMI.fit(model::LinearBinaryClassifier, verbosity::Int, X, y)
     # apply the model
     Xmatrix, offset = prepare_inputs(model, X)
-    decode    = y[1]
-    y_plain   = MMI.int(y) .- 1 # 0, 1 of type Int
-    fitresult = GLM.glm(Xmatrix, y_plain, Distributions.Bernoulli(), model.link; offset=offset)
+    decode = y[1]
+    y_plain = MMI.int(y) .- 1 # 0, 1 of type Int
+    form = glm_formula(model, X)
+    data = glm_data(X, Xmatrix, y_plain)
+    @show form
+    @show data
+    fitresult = GLM.glm(form, data, Distributions.Bernoulli(), model.link; offset=offset)
     # form the report
-    report    = glm_report(fitresult)
-    cache     = nothing
+    report = glm_report(fitresult)
+    cache = nothing
     # return
     return (fitresult, decode), cache, report
 end
