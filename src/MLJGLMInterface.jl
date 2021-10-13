@@ -141,7 +141,8 @@ function glm_formula(model, X)::FormulaTerm
     # Adding a zero term explicitly disables the intercept.
     # See the StatsModels.jl tests for more information.
     intercept_term = model.fit_intercept ? 1 : 0
-    form = GLM.Term(:y) ~ sum(GLM.term.(keys(X))) + GLM.term(intercept_term)
+    features = filter(x -> x != model.offsetcol, keys(X))
+    form = GLM.Term(:y) ~ sum(GLM.term.(features)) + GLM.term(intercept_term)
     return form
 end
 
