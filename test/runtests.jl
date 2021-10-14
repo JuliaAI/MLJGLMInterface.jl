@@ -28,7 +28,7 @@ Xtrain = selectrows(X, train)
 ytrain = selectrows(y, train)
 Xtest  = selectrows(X, test)
 
-fitresult, _, report = fit(atom_ols, 1, Xtrain, ytrain)
+fitresult, _, _ = fit(atom_ols, 1, Xtrain, ytrain)
 θ = MLJBase.fitted_params(atom_ols, fitresult)
 
 p = predict_mean(atom_ols, fitresult, Xtest)
@@ -197,4 +197,8 @@ end
     @test parameters == ["a", "b", "c", "(Intercept)"]
     yhat = predict(lr, fitresult, X)
     @test mean(cross_entropy(yhat, y)) < 0.6
+
+    params = fitted_params(lr, fitresult)
+    @test params.features == ["a", "b", "c"]
+    @test :intercept in keys(params)
 end

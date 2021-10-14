@@ -93,10 +93,13 @@ end
 
 Report based on the `fitresult` of a GLM model.
 """
-glm_report(fitresult) = ( deviance     = GLM.deviance(fitresult),
-                          dof_residual = GLM.dof_residual(fitresult),
-                          stderror     = GLM.stderror(fitresult),
-                          vcov         = GLM.vcov(fitresult) )
+function glm_report(fitresult)
+    deviance = GLM.deviance(fitresult)
+    dof_residual = GLM.dof_residual(fitresult)
+    stderror = GLM.stderror(fitresult)
+    vcov = GLM.vcov(fitresult)
+    return (; deviance=deviance, dof_residual=dof_residual, stderror=stderror, vcov=vcov)
+end
 
 ####
 #### REGRESSION TYPES
@@ -207,9 +210,11 @@ glm_fitresult(::LinearCountRegressor, fitresult) = fitresult
 glm_fitresult(::LinearBinaryClassifier, fitresult) = fitresult[1]
 
 function MMI.fitted_params(model::GLM_MODELS, fitresult)
-    coefs = GLM.coef(glm_fitresult(model,fitresult))
-    return (coef      = coefs[1:end-Int(model.fit_intercept)],
-            intercept = ifelse(model.fit_intercept, coefs[end], nothing))
+    result = glm_fitresult(model, fitresult)
+    coef = GLM.coef(result)[1:end-Int(model.fit_intercept)]
+    features = filter(name -> name != "(Intercept)", GLM.coefnames(result))
+    intercept = model.fit_intercept ? coef[end] : nothing
+    return (; features=features, coef=coef, intercept=intercept)
 end
 
 
