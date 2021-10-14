@@ -211,7 +211,7 @@ glm_fitresult(::LinearBinaryClassifier, fitresult) = fitresult[1]
 
 function MMI.fitted_params(model::GLM_MODELS, fitresult)
     result = glm_fitresult(model, fitresult)
-    coef = GLM.coef(result)[1:end-Int(model.fit_intercept)]
+    coef = GLM.coef(result)
     features = filter(name -> name != "(Intercept)", GLM.coefnames(result))
     intercept = model.fit_intercept ? coef[end] : nothing
     return (; features=features, coef=coef, intercept=intercept)
