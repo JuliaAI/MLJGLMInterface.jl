@@ -158,6 +158,7 @@ end
         fp = fitted_params(lr, fitresult)
 
         @test fp.coef ≈ [2, -1] atol=0.03
+        @test fp.intercept === nothing
     end
     @testset "Test Linear regression with offset" begin
         N = 1000
@@ -193,12 +194,14 @@ end
     lr = LinearBinaryClassifier(fit_intercept=true)
     fitresult, _, _ = fit(lr, 1, X, y)
     ctable = coeftable(first(fitresult))
-    parameters = ctable.rownms
+    parameters = ctable.rownms # Row names.
     @test parameters == ["a", "b", "c", "(Intercept)"]
+    intercept = ctable.cols[1][4]
     yhat = predict(lr, fitresult, X)
     @test mean(cross_entropy(yhat, y)) < 0.6
 
-    params = fitted_params(lr, fitresult)
-    @test params.features == ["a", "b", "c"]
-    @test :intercept in keys(params)
+    fp = fitted_params(lr, fitresult)
+    @test fp.features == ["a", "b", "c"]
+    @test :intercept in keys(fp)
+    @test intercept == fp.intercept
 end
