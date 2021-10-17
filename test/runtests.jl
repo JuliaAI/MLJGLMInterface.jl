@@ -4,6 +4,7 @@ using MLJBase
 using LinearAlgebra
 using Statistics
 using MLJGLMInterface
+using GLM: coeftable
 import GLM
 
 import Distributions
@@ -27,7 +28,7 @@ Xtrain = selectrows(X, train)
 ytrain = selectrows(y, train)
 Xtest  = selectrows(X, test)
 
-fitresult, _, report = fit(atom_ols, 1, Xtrain, ytrain)
+fitresult, _, _ = fit(atom_ols, 1, Xtrain, ytrain)
 θ = MLJBase.fitted_params(atom_ols, fitresult)
 
 p = predict_mean(atom_ols, fitresult, Xtest)
@@ -53,7 +54,7 @@ model = atom_ols
 
 p_distr = predict(atom_ols, fitresult, selectrows(X, test))
 
-@test p_distr[1] == Distributions.Normal(p[1], GLM.dispersion(fitresult))
+@test p_distr[1] == Distributions.Normal(p[1], GLM.dispersion(fitresult.model))
 
 ###
 ### Logistic regression
@@ -64,7 +65,7 @@ rng = StableRNGs.StableRNG(0)
 N = 100
 X = MLJBase.table(rand(rng, N, 4));
 ycont = 2*X.x1 - X.x3 + 0.6*rand(rng, N)
-y = (ycont .> mean(ycont)) |> categorical;
+y = categorical(ycont .> mean(ycont))
 
 lr = LinearBinaryClassifier()
 fitresult, _, report = fit(lr, 1, X, y)
@@ -107,7 +108,7 @@ modeltypes = [LinearRegressor, LinearBinaryClassifier, LinearCountRegressor]
     @testset "intercept/offsetcol" for mt in modeltypes
             X = (x1=[1,2,3], x2=[4,5,6])
             m = mt(fit_intercept=true, offsetcol=:x2)
-            Xmatrix, offset = MLJGLMInterface.prepare_inputs(m, X)
+            Xmatrix, offset = MLJGLMInterface.prepare_inputs(m, X; handle_intercept=true)
 
             @test offset == [4, 5, 6]
             @test Xmatrix== [1 1;
@@ -118,7 +119,7 @@ modeltypes = [LinearRegressor, LinearBinaryClassifier, LinearCountRegressor]
     @testset "no intercept/no offsetcol" for mt in modeltypes
         X = (x1=[1,2,3], x2=[4,5,6])
         m = mt(fit_intercept=false)
-        Xmatrix, offset = MLJGLMInterface.prepare_inputs(m, X)
+        Xmatrix, offset = MLJGLMInterface.prepare_inputs(m, X; handle_intercept=true)
 
         @test offset == []
         @test Xmatrix == [1 4;
@@ -141,10 +142,10 @@ end
         @test length(Xnew) == 2
     end
 
-    # In the following:
-    # The second column is taken as an offset by the model
-    # This is equivalent to assuming the coef is 1 and known 
-    
+    # In the following:
+    # The second column is taken as an offset by the model
+    # This is equivalent to assuming the coef is 1 and known
+
     @testset "Test Logistic regression with offset" begin
         N = 1000
         rng = StableRNGs.StableRNG(0)
@@ -157,6 +158,7 @@ end
         fp = fitted_params(lr, fitresult)
 
         @test fp.coef ≈ [2, -1] atol=0.03
+        @test fp.intercept === nothing
     end
     @testset "Test Linear regression with offset" begin
         N = 1000
@@ -184,4 +186,22 @@ end
 
         @test fp.coef ≈ [2, -1] atol=0.04
     end
+end
+
+@testset "Param names in fitresult" begin
+    X = (a=[1, 9, 4, 2], b=[1, 2, 1, 4], c=[9, 1, 5, 3])
+    y = categorical([true, true, false, false])
+    lr = LinearBinaryClassifier(fit_intercept=true)
+    fitresult, _, _ = fit(lr, 1, X, y)
+    ctable = coeftable(first(fitresult))
+    parameters = ctable.rownms # Row names.
+    @test parameters == ["a", "b", "c", "(Intercept)"]
+    intercept = ctable.cols[1][4]
+    yhat = predict(lr, fitresult, X)
+    @test mean(cross_entropy(yhat, y)) < 0.6
+
+    fp = fitted_params(lr, fitresult)
+    @test fp.features == ["a", "b", "c"]
+    @test :intercept in keys(fp)
+    @test intercept == fp.intercept
 end

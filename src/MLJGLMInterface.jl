@@ -2,7 +2,6 @@ module MLJGLMInterface
 
 # -------------------------------------------------------------------
 # TODO
-# - return feature names in the report
 # - return feature importance curve to report using `features`
 # - handle binomial case properly, needs MLJ API change for weighted
 # samples (y/N ~ Be(p) with weights N)
@@ -22,6 +21,7 @@ import MLJModelInterface: metadata_pkg, metadata_model,
 import Distributions
 using Tables
 import GLM
+using GLM: FormulaTerm
 using Parameters
 
 const MMI = MLJModelInterface
@@ -44,10 +44,8 @@ const LCR_DESCR = "Linear count regressor with specified "*
 
 """
 augment_X(X, b)
-
 Augment the matrix `X` with a column of ones if the intercept is to be
 fitted (`b=true`), return `X` otherwise.
-
 """
 function augment_X(X::Matrix, b::Bool)::Matrix
     b && return hcat(X, ones(eltype(X), size(X, 1), 1))
@@ -55,7 +53,9 @@ function augment_X(X::Matrix, b::Bool)::Matrix
 end
 
 """
-When no offset is specied, return X and an empty vector
+    split_X_offset(X, offsetcol::Nothing)
+
+When no offset is specied, return X and an empty vector.
 """
 split_X_offset(X, offsetcol::Nothing) = (X, Float64[])
 
@@ -73,22 +73,33 @@ function split_X_offset(X, offsetcol::Symbol)
     return newX, Vector(offset)
 end
 
+"""
+    prepare_inputs(model, X; handle_intercept=false)
 
-function prepare_inputs(model, X)
+Handle `model.offsetcol` and `model.fit_intercept` if `handle_intercept=true`.
+`handle_intercept` is disabled for fitting since the StatsModels.@formula handles the intercept.
+"""
+function prepare_inputs(model, X; handle_intercept=false)
     Xminoffset, offset = split_X_offset(X, model.offsetcol)
-    Xmatrix   = augment_X(MMI.matrix(Xminoffset), model.fit_intercept)
+    Xmatrix = MMI.matrix(Xminoffset)
+    if handle_intercept
+        Xmatrix = augment_X(Xmatrix, model.fit_intercept)
+    end
     return Xmatrix, offset
 end
 
 """
-glm_report(fitresult)
+    glm_report(fitresult)
 
 Report based on the `fitresult` of a GLM model.
 """
-glm_report(fitresult) = ( deviance     = GLM.deviance(fitresult),
-                          dof_residual = GLM.dof_residual(fitresult),
-                          stderror     = GLM.stderror(fitresult),
-                          vcov         = GLM.vcov(fitresult) )
+function glm_report(fitresult)
+    deviance = GLM.deviance(fitresult)
+    dof_residual = GLM.dof_residual(fitresult)
+    stderror = GLM.stderror(fitresult)
+    vcov = GLM.vcov(fitresult)
+    return (; deviance=deviance, dof_residual=dof_residual, stderror=stderror, vcov=vcov)
+end
 
 ####
 #### REGRESSION TYPES
@@ -123,6 +134,32 @@ end
 
 const GLM_MODELS = Union{<:LinearRegressor, <:LinearBinaryClassifier, <:LinearCountRegressor}
 
+"""
+    glm_formula(model, X) -> FormulaTerm
+
+Return formula which is ready to be passed to `fit(form, data, ...)`.
+"""
+function glm_formula(model, X)::FormulaTerm
+    # By default, using a JuliaStats formula will add an intercept.
+    # Adding a zero term explicitly disables the intercept.
+    # See the StatsModels.jl tests for more information.
+    intercept_term = model.fit_intercept ? 1 : 0
+    features = filter(x -> x != model.offsetcol, keys(X))
+    form = GLM.Term(:y) ~ sum(GLM.term.(features)) + GLM.term(intercept_term)
+    return form
+end
+
+"""
+    glm_data(model, Xmatrix, X, y)
+
+Return data which is ready to be passed to `fit(form, data, ...)`.
+"""
+function glm_data(model, Xmatrix, X, y)
+    header = collect(filter(x -> x != model.offsetcol, keys(X)))
+    data = Tables.table([Xmatrix y]; header=[header; :y])
+    return data
+end
+
 ####
 #### FIT FUNCTIONS
 ####
@@ -130,7 +167,9 @@ const GLM_MODELS = Union{<:LinearRegressor, <:LinearBinaryClassifier, <:LinearCo
 function MMI.fit(model::LinearRegressor, verbosity::Int, X, y)
     # apply the model
     Xmatrix, offset = prepare_inputs(model, X)
-    fitresult = GLM.glm(Xmatrix, y, Distributions.Normal(), GLM.IdentityLink(); offset=offset)
+    data = glm_data(model, Xmatrix, X, y)
+    form = glm_formula(model, X)
+    fitresult = GLM.glm(form, data, Distributions.Normal(), GLM.IdentityLink(); offset=offset)
     # form the report
     report    = glm_report(fitresult)
     cache     = nothing
@@ -141,7 +180,9 @@ end
 function MMI.fit(model::LinearCountRegressor, verbosity::Int, X, y)
     # apply the model
     Xmatrix, offset = prepare_inputs(model, X)
-    fitresult = GLM.glm(Xmatrix, y, model.distribution, model.link; offset=offset)
+    data = glm_data(model, Xmatrix, X, y)
+    form = glm_formula(model, X)
+    fitresult = GLM.glm(form, data, model.distribution, model.link; offset=offset)
     # form the report
     report    = glm_report(fitresult)
     cache     = nothing
@@ -151,25 +192,29 @@ end
 
 function MMI.fit(model::LinearBinaryClassifier, verbosity::Int, X, y)
     # apply the model
+    decode = y[1]
+    y_plain = MMI.int(y) .- 1 # 0, 1 of type Int
     Xmatrix, offset = prepare_inputs(model, X)
-    decode    = y[1]
-    y_plain   = MMI.int(y) .- 1 # 0, 1 of type Int
-    fitresult = GLM.glm(Xmatrix, y_plain, Distributions.Bernoulli(), model.link; offset=offset)
+    data = glm_data(model, Xmatrix, X, y_plain)
+    form = glm_formula(model, X)
+    fitresult = GLM.glm(form, data, Distributions.Bernoulli(), model.link; offset=offset)
     # form the report
-    report    = glm_report(fitresult)
-    cache     = nothing
+    report = glm_report(fitresult)
+    cache = nothing
     # return
     return (fitresult, decode), cache, report
 end
 
-glm_fitresult(::LinearRegressor, fitresult)  = fitresult
-glm_fitresult(::LinearCountRegressor, fitresult)  = fitresult
-glm_fitresult(::LinearBinaryClassifier, fitresult)  = fitresult[1]
+glm_fitresult(::LinearRegressor, fitresult) = fitresult
+glm_fitresult(::LinearCountRegressor, fitresult) = fitresult
+glm_fitresult(::LinearBinaryClassifier, fitresult) = fitresult[1]
 
 function MMI.fitted_params(model::GLM_MODELS, fitresult)
-    coefs = GLM.coef(glm_fitresult(model,fitresult))
-    return (coef      = coefs[1:end-Int(model.fit_intercept)],
-            intercept = ifelse(model.fit_intercept, coefs[end], nothing))
+    result = glm_fitresult(model, fitresult)
+    coef = GLM.coef(result)
+    features = filter(name -> name != "(Intercept)", GLM.coefnames(result))
+    intercept = model.fit_intercept ? coef[end] : nothing
+    return (; features=features, coef=coef, intercept=intercept)
 end
 
 
@@ -179,18 +224,18 @@ end
 
 # more efficient than MLJBase fallback
 function MMI.predict_mean(model::Union{LinearRegressor,<:LinearCountRegressor}, fitresult, Xnew)
-    Xmatrix, offset = prepare_inputs(model, Xnew)
+    Xmatrix, offset = prepare_inputs(model, Xnew; handle_intercept=true)
     return GLM.predict(fitresult, Xmatrix; offset=offset)
 end
 
 function MMI.predict_mean(model::LinearBinaryClassifier, (fitresult, _), Xnew)
-    Xmatrix, offset = prepare_inputs(model, Xnew)
-    return GLM.predict(fitresult, Xmatrix; offset=offset)
+    Xmatrix, offset = prepare_inputs(model, Xnew; handle_intercept=true)
+    return GLM.predict(fitresult.model, Xmatrix; offset=offset)
 end
 
 function MMI.predict(model::LinearRegressor, fitresult, Xnew)
     μ = MMI.predict_mean(model, fitresult, Xnew)
-    σ̂ = GLM.dispersion(fitresult)
+    σ̂ = GLM.dispersion(fitresult.model)
     return [GLM.Normal(μᵢ, σ̂) for μᵢ ∈ μ]
 end
 
