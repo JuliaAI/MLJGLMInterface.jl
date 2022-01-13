@@ -135,44 +135,62 @@ end
 const GLM_MODELS = Union{<:LinearRegressor, <:LinearBinaryClassifier, <:LinearCountRegressor}
 
 """
-    glm_formula(model, X) -> FormulaTerm
+    glm_formula(model, features) -> FormulaTerm
 
 Return formula which is ready to be passed to `fit(form, data, ...)`.
 """
-function glm_formula(model, X)::FormulaTerm
+function glm_formula(model, features)::FormulaTerm
     # By default, using a JuliaStats formula will add an intercept.
     # Adding a zero term explicitly disables the intercept.
     # See the StatsModels.jl tests for more information.
     intercept_term = model.fit_intercept ? 1 : 0
-    features = filter(x -> x != model.offsetcol, keys(X))
     form = GLM.Term(:y) ~ sum(GLM.term.(features)) + GLM.term(intercept_term)
     return form
 end
 
 """
-    glm_data(model, Xmatrix, X, y)
+    glm_data(model, Xmatrix, y, features)
 
 Return data which is ready to be passed to `fit(form, data, ...)`.
 """
-function glm_data(model, Xmatrix, X, y)
-    header = collect(filter(x -> x != model.offsetcol, keys(X)))
+function glm_data(model, Xmatrix, y, features)
+    header = collect(features)
     data = Tables.table([Xmatrix y]; header=[header; :y])
     return data
+end
+
+"""
+    glm_features(model, X)
+
+Returns an iterable features object, to be used in the construction of 
+glm formula and glm data header.
+"""
+function glm_features(model, X)
+    if Tables.columnaccess(X)
+        table_features = keys(Tables.columns(X))
+    else
+        first_row = iterate(Tables.rows(X), 1)[1]
+        table_features = first_row === nothing ? Symbol[] : keys(first_row)
+    end
+    features = filter(x -> x != model.offsetcol, table_features)
+    return features
 end
 
 ####
 #### FIT FUNCTIONS
 ####
 
+
 function MMI.fit(model::LinearRegressor, verbosity::Int, X, y)
     # apply the model
     Xmatrix, offset = prepare_inputs(model, X)
-    data = glm_data(model, Xmatrix, X, y)
-    form = glm_formula(model, X)
+    features = glm_features(model, X)
+    data = glm_data(model, Xmatrix, y, features)
+    form = glm_formula(model, features)
     fitresult = GLM.glm(form, data, Distributions.Normal(), GLM.IdentityLink(); offset=offset)
     # form the report
-    report    = glm_report(fitresult)
-    cache     = nothing
+    report = glm_report(fitresult)
+    cache = nothing
     # return
     return fitresult, cache, report
 end
@@ -180,12 +198,13 @@ end
 function MMI.fit(model::LinearCountRegressor, verbosity::Int, X, y)
     # apply the model
     Xmatrix, offset = prepare_inputs(model, X)
-    data = glm_data(model, Xmatrix, X, y)
-    form = glm_formula(model, X)
+    features = glm_features(model, X)
+    data = glm_data(model, Xmatrix, y, features)
+    form = glm_formula(model, features)
     fitresult = GLM.glm(form, data, model.distribution, model.link; offset=offset)
     # form the report
-    report    = glm_report(fitresult)
-    cache     = nothing
+    report = glm_report(fitresult)
+    cache = nothing
     # return
     return fitresult, cache, report
 end
@@ -195,8 +214,9 @@ function MMI.fit(model::LinearBinaryClassifier, verbosity::Int, X, y)
     decode = y[1]
     y_plain = MMI.int(y) .- 1 # 0, 1 of type Int
     Xmatrix, offset = prepare_inputs(model, X)
-    data = glm_data(model, Xmatrix, X, y_plain)
-    form = glm_formula(model, X)
+    features = glm_features(model, X)
+    data = glm_data(model, Xmatrix, y_plain, features)
+    form = glm_formula(model, features)
     fitresult = GLM.glm(form, data, Distributions.Bernoulli(), model.link; offset=offset)
     # form the report
     report = glm_report(fitresult)
