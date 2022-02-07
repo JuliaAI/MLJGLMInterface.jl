@@ -16,13 +16,11 @@ export LinearRegressor, LinearBinaryClassifier, LinearCountRegressor
 
 import MLJModelInterface
 import MLJModelInterface: metadata_pkg, metadata_model,
-                          Table, Continuous, Count, Finite, OrderedFactor,
-                          Multiclass, @mlj_model
+    Table, Continuous, Count, Finite, OrderedFactor,
+    Multiclass, @mlj_model
 import Distributions
 using Tables
 import GLM
-using GLM: FormulaTerm
-using Parameters
 
 const MMI = MLJModelInterface
 const PKG = "MLJGLMInterface"
@@ -38,69 +36,6 @@ const LCR_DESCR = "Linear count regressor with specified "*
     "link and distribution (e.g. log link and poisson)."
 
 
-###
-## Helper functions
-###
-
-"""
-augment_X(X, b)
-Augment the matrix `X` with a column of ones if the intercept is to be
-fitted (`b=true`), return `X` otherwise.
-"""
-function augment_X(X::Matrix, b::Bool)::Matrix
-    b && return hcat(X, ones(eltype(X), size(X, 1), 1))
-    return X
-end
-
-"""
-    split_X_offset(X, offsetcol::Nothing)
-
-When no offset is specied, return X and an empty vector.
-"""
-split_X_offset(X, offsetcol::Nothing) = (X, Float64[])
-
-"""
-    split_X_offset(X, offsetcol::Symbol)
-
-Splits the input table X in:
-    - A new table not containing the original offset column
-    - The offset vector extracted from the table
-"""
-function split_X_offset(X, offsetcol::Symbol)
-    ct = Tables.columntable(X)
-    offset = Tables.getcolumn(ct, offsetcol)
-    newX = Base.structdiff(ct, NamedTuple{(offsetcol,)})
-    return newX, Vector(offset)
-end
-
-"""
-    prepare_inputs(model, X; handle_intercept=false)
-
-Handle `model.offsetcol` and `model.fit_intercept` if `handle_intercept=true`.
-`handle_intercept` is disabled for fitting since the StatsModels.@formula handles the intercept.
-"""
-function prepare_inputs(model, X; handle_intercept=false)
-    Xminoffset, offset = split_X_offset(X, model.offsetcol)
-    Xmatrix = MMI.matrix(Xminoffset)
-    if handle_intercept
-        Xmatrix = augment_X(Xmatrix, model.fit_intercept)
-    end
-    return Xmatrix, offset
-end
-
-"""
-    glm_report(fitresult)
-
-Report based on the `fitresult` of a GLM model.
-"""
-function glm_report(fitresult)
-    deviance = GLM.deviance(fitresult)
-    dof_residual = GLM.dof_residual(fitresult)
-    stderror = GLM.stderror(fitresult)
-    vcov = GLM.vcov(fitresult)
-    return (; deviance=deviance, dof_residual=dof_residual, stderror=stderror, vcov=vcov)
-end
-
 ####
 #### REGRESSION TYPES
 ####
@@ -110,131 +45,377 @@ end
 # LinearBinaryClassifier --> Probabilistic w Binary target // logit,cauchit,..
 # MulticlassClassifier   --> Probabilistic w Multiclass target
 
+const VALID_REPORT_PARMS = [:deviance, :dof_residual, :stderror, :vcov, :coef_table]
 
-@with_kw_noshow mutable struct LinearRegressor <: MMI.Probabilistic
-    fit_intercept::Bool                 = true
-    allowrankdeficient::Bool            = false
-    offsetcol::Union{Symbol, Nothing}   = nothing
+MMI.@mlj_model mutable struct LinearRegressor <: MMI.Probabilistic
+    fit_intercept::Bool = true
+    dropcollinear::Bool = true
+    offsetcol::Union{Symbol, Nothing} = nothing
+    report_params::Union{
+        Nothing, AbstractVector{Symbol}
+    } = VALID_REPORT_PARMS::(_ === nothing || issubset(_, VALID_REPORT_PARMS))
+    check_features::Bool = false
 end
 
-@with_kw_noshow mutable struct LinearBinaryClassifier{L<:GLM.Link01} <: MMI.Probabilistic
-    fit_intercept::Bool                 = true
-    link::L                             = GLM.LogitLink()
-    offsetcol::Union{Symbol, Nothing}   = nothing
+MMI.@mlj_model mutable struct LinearBinaryClassifier <: MMI.Probabilistic
+    fit_intercept::Bool = true
+    link::GLM.Link01 = GLM.LogitLink()
+    offsetcol::Union{Symbol, Nothing} = nothing
+    maxiter::Integer = 30
+    atol::Real = 1e-6
+    rtol::Real = 1e-6
+    minstepfac::Real = 0.001
+    report_params::Union{
+        Nothing, AbstractVector{Symbol}
+    } = VALID_REPORT_PARMS::(_ === nothing || issubset(_, VALID_REPORT_PARMS))
+    check_features::Bool = false
 end
 
-@with_kw_noshow mutable struct LinearCountRegressor{D<:Distributions.Distribution,L<:GLM.Link} <: MMI.Probabilistic
-    fit_intercept::Bool                 = true
-    distribution::D                     = Distributions.Poisson()
-    link::L                             = GLM.LogLink()
-    offsetcol::Union{Symbol, Nothing}   = nothing
+MMI.@mlj_model mutable struct LinearCountRegressor <: MMI.Probabilistic
+    fit_intercept::Bool = true
+    distribution::Distributions.Distribution = Distributions.Poisson()
+    link::GLM.Link = GLM.LogLink()
+    offsetcol::Union{Symbol, Nothing} = nothing
+    maxiter::Integer = 30
+    atol::Real = 1e-6
+    rtol::Real = 1e-6
+    minstepfac::Real = 0.001
+    report_params::Union{
+        Nothing, AbstractVector{Symbol}
+    } = VALID_REPORT_PARMS::(_ === nothing || issubset(_, VALID_REPORT_PARMS))
+    check_features::Bool = false
 end
 
 # Short names for convenience here
 
-const GLM_MODELS = Union{<:LinearRegressor, <:LinearBinaryClassifier, <:LinearCountRegressor}
+const GLM_MODELS = Union{
+    <:LinearRegressor, 
+    <:LinearBinaryClassifier, 
+    <:LinearCountRegressor
+}
 
-"""
-    glm_formula(model, features) -> FormulaTerm
 
-Return formula which is ready to be passed to `fit(form, data, ...)`.
-"""
-function glm_formula(model, features)::FormulaTerm
-    # By default, using a JuliaStats formula will add an intercept.
-    # Adding a zero term explicitly disables the intercept.
-    # See the StatsModels.jl tests for more information.
-    intercept_term = model.fit_intercept ? 1 : 0
-    form = GLM.Term(:y) ~ sum(GLM.term.(features)) + GLM.term(intercept_term)
-    return form
+###
+## Helper functions
+###
+
+function _throw_dims_err(model, est_dispersion_param)
+    add_to = model.fit_intercept - !isnothing(model.offsetcol)
+    throw(
+        ArgumentError(
+            " A `$(nameof(typeof(model)))` with `fit_intercept == $(model.fit_intercept)`,"
+            * ifelse(
+                isnothing(model.offsetcol),
+                " `offsetcol == nothing` ",
+                " `offsetcol !== nothing` "
+            ) *
+            ifelse(
+                model isa LinearCountRegressor,   
+                "and `distribution::$(nameof(typeof(model.distribution)))` ",
+                ""
+            ) *
+            "require `n_samples $(ifelse(est_dispersion_param, ">", ">=")) "*
+            "n_features $(
+                ifelse(iszero(add_to), "", ifelse(add_to < 0, "-", "+") * "$(abs(add_to))")
+            )`."
+        )
+    )
+    return nothing
 end
 
-"""
-    glm_data(model, Xmatrix, y, features)
+_getarray(iter::AbstractVector) = iter
+_getarray(iter) = collect(iter)
 
-Return data which is ready to be passed to `fit(form, data, ...)`.
-"""
-function glm_data(model, Xmatrix, y, features)
-    header = collect(features)
-    data = Tables.table([Xmatrix y]; header=[header; :y])
-    return data
+# If `estimates_dispersion_param` returns `false` then the dispersion
+# parameter isn't estimated from data but known apriori to be `1`.
+estimates_dispersion_param(::LinearRegressor) = true
+estimates_dispersion_param(::LinearBinaryClassifier) = false
+
+function estimates_dispersion_param(model::LinearCountRegressor)
+    return GLM.dispersion_parameter(model.distribution)
 end
-
-"""
-    glm_features(model, X)
-
-Returns an iterable features object, to be used in the construction of 
-glm formula and glm data header.
-"""
-function glm_features(model, X)
-    if Tables.columnaccess(X)
-        table_features = keys(Tables.columns(X))
+function check_dims(model, n, p)
+    if estimates_dispersion_param(model)
+        n <= p + model.fit_intercept && _throw_dims_err(model, true)
     else
-        first_row = iterate(Tables.rows(X), 1)[1]
-        table_features = first_row === nothing ? Symbol[] : keys(first_row)
+        n < p + model.fit_intercept && _throw_dims_err(model, false)
     end
-    features = filter(x -> x != model.offsetcol, table_features)
-    return features
+end
+
+function _to_matrix(model, X::Tables.MatrixTable, check=true)
+    sch = Tables.schema(X)
+    n, p = Tables.rowcount(X), length(sch.names)
+    if check
+        check_dims(model, n, p)
+    end
+
+    if model.fit_intercept
+        p = p + 1
+        T = reduce(promote_type, sch.types)
+        matrix = Matrix{T}(undef, n, p)
+        for (i, col) in enumerate(X)
+            matrix[:, i] .= col
+        end
+        (@inbounds(matrix[:, p] .= one(T)))
+    else
+        matrix = Tables.matrix(X)
+    end
+    return matrix
+end
+
+function _to_matrix(model, X, check=true)
+    cols = Tables.Columns(X)
+    types = Tables.schema(cols).types
+    T = reduce(promote_type, types)
+    n, p = Tables.rowcount(cols), length(types)
+    if check
+        check_dims(model, n, p)
+    end
+    
+    matrix = Matrix{T}(undef, n, p + model.fit_intercept)
+    for (i, col) in enumerate(cols)
+        matrix[:, i] .= col
+    end
+    model.fit_intercept && (@inbounds(matrix[:, p + 1] .= one(T)))
+    
+    return matrix
+end
+
+"""
+    split_X_offset(X, offsetcol::Nothing)
+
+When no offset is specied, return `X`, an empty vector and its features.
+"""
+function split_X_offset(X, offsetcol::Nothing)
+    
+   return (X, Float64[], _getarray(Tables.columnnames(X)))
+end
+
+## TODO - find a way to split_X_offset without needing to convert `X` into a `ColumnTable`
+"""
+    split_X_offset(X, offsetcol::Symbol)
+
+Splits the input X into:
+    - A new table not containing the original offset column
+    - The offset vector extracted from the table
+Additional it also returns the features of the new table
+"""
+function split_X_offset(X, offsetcol::Symbol)
+    Xcols = Tables.columntable(X)
+    #sch = Tables.schema(Xcols)
+    offset = Tables.getcolumn(Xcols, offsetcol)
+    newX = Base.structdiff(Xcols, NamedTuple{(offsetcol,)})
+    return newX, Vector(offset), _getarray(Tables.columnnames(newX))
+end
+
+"""
+    prepare_inputs(model, X, check=false)
+
+Handle `model.offsetcol` (if present) and `model.fit_intercept`.
+"""
+function prepare_inputs(model, X, check=true)
+    Xcols = (X isa Tables.MatrixTable || X isa Tables.ColumnTable) ? X : Tables.Columns(X)
+    table_features = Tables.columnnames(Xcols)
+    length(table_features) >= 1 || throw(
+        ArgumentError("`X` must contain at least one feature column.")
+    )
+    if !isnothing(model.offsetcol)
+        model.offsetcol in table_features || throw(
+            ArgumentError("offset column `$(model.offsetcol)` not found in table `X")
+        )
+        if length(table_features) < 2 && !model.fit_intercept
+            throw(
+                ArgumentError(
+                    "At least 2 feature columns are required for learning with"*
+                    " `offsetcol !== nothing` and `fit_intercept == false`."
+                )
+            )
+        end
+    end
+    Xminoffset, offset, features = split_X_offset(Xcols, model.offsetcol)
+    Xmatrix = _to_matrix(model, Xminoffset, check)
+    return Xmatrix, offset, features
+end
+
+"""
+    glm_report(glm_models, reportkeys, features)
+
+Returns a Dictionary report based on a fitted `GeneralizedLinearModel` or `LinearModel` 
+and keyed on `reportkeys`. The `features` argument is only useful when `:coef_table` is
+one of the keys in `reportkeys`.
+"""
+glm_report
+
+glm_report(glm_model, ::Nothing) = NamedTuple()
+
+function glm_report(glm_model, reportkeys, ftrs)
+    isempty(reportkeys) && return NamedTuple()
+    report_dict = Dict{Symbol, Any}() 
+    if in(:deviance, reportkeys)
+        report_dict[:deviance] = GLM.deviance(glm_model)
+    end
+    if in(:dof_residual, reportkeys)
+        report_dict[:dof_residual] = GLM.dof_residual(glm_model)
+    end
+    if in(:stderror, reportkeys)
+        report_dict[:stderror] = GLM.stderror(glm_model)
+    end
+    if in(:vcov, reportkeys)
+        report_dict[:vcov] = GLM.vcov(glm_model)
+    end
+    if in(:coef_table, reportkeys)
+        coef_table = GLM.coeftable(glm_model)
+        if length(coef_table.rownms) == length(ftrs)
+            # This means `fit_intercept` is false
+            coef_table.rownms = string.(ftrs)
+        else      
+            coef_table.rownms = [
+                (string(ftrs[i]) for i in eachindex(ftrs))...;
+                "(Intercept)"
+            ]
+        end
+        report_dict[:coef_table] = coef_table
+    end
+    return NamedTuple{Tuple(keys(report_dict))}(values(report_dict))
+end
+
+
+"""
+    check_weights(w, y)
+
+Validate sample weights to be used in fitting `Linear/GeneralizedLinearModel` based 
+on target vector `y`.
+Note: Categorical targets have to be converted into a AbstractVector{<:Real} before 
+passing to this method.
+"""
+check_weights
+
+check_weights(::Nothing, y::AbstractVector{<:Real}) = similar(y, 0)
+
+function check_weights(w, y::AbstractVector{<:Real})
+    w isa AbstractVector{<:Real} || throw(
+        ArgumentError("weights passed must be an instance of `AbstractVector{<:Real}")
+    )
+    length(y) == length(w) || throw(
+        ArgumentError("weights passed must have the same length as the target vector.")
+    )
+    return w
 end
 
 ####
 #### FIT FUNCTIONS
 ####
 
+struct FitResult{V<:AbstractVector, T, R}
+    "Vector containg coeficients of the predictors and intercept"
+    coef::V
+    "An estimate of the dispersion parameter of the glm model. "
+    dispersion::T
+    "Other fitted parameters specific to a fitted model"
+    params::R
+    function FitResult(
+        coef::AbstractVector,
+        dispersion,
+        params
+    )
+        return new{
+            typeof(coef),
+            typeof(dispersion),
+            typeof(params)
+        }(coef, dispersion, params)
+    end
+end
 
-function MMI.fit(model::LinearRegressor, verbosity::Int, X, y)
+coef(fr::FitResult) = fr.coef
+dispersion(fr::FitResult) = fr.dispersion
+params(fr::FitResult) = fr.params
+
+function MMI.fit(model::LinearRegressor, verbosity::Int, X, y, w=nothing)
     # apply the model
-    Xmatrix, offset = prepare_inputs(model, X)
-    features = glm_features(model, X)
-    data = glm_data(model, Xmatrix, y, features)
-    form = glm_formula(model, features)
-    fitresult = GLM.glm(form, data, Distributions.Normal(), GLM.IdentityLink(); offset=offset)
+    Xmatrix, offset, features = prepare_inputs(model, X)
+    y_ = isnothing(model.offsetcol) ? y : y .- offset
+    w_ = check_weights(w, y_)
+    linear_reg_model = GLM.lm(Xmatrix, y_; wts= w_, dropcollinear=model.dropcollinear)
+    fitresult = FitResult(
+        GLM.coef(linear_reg_model),
+        GLM.dispersion(linear_reg_model),
+        (feature_names = features,)
+    )
     # form the report
-    report = glm_report(fitresult)
+    report = glm_report(linear_reg_model, model.report_params, features)
     cache = nothing
     # return
     return fitresult, cache, report
 end
 
-function MMI.fit(model::LinearCountRegressor, verbosity::Int, X, y)
+function MMI.fit(model::LinearCountRegressor, verbosity::Int, X, y, w=nothing)
     # apply the model
-    Xmatrix, offset = prepare_inputs(model, X)
-    features = glm_features(model, X)
-    data = glm_data(model, Xmatrix, y, features)
-    form = glm_formula(model, features)
-    fitresult = GLM.glm(form, data, model.distribution, model.link; offset=offset)
+    w_ = check_weights(w, y)
+    Xmatrix, offset, features = prepare_inputs(model, X)  
+    glm_reg_model = GLM.glm(
+        Xmatrix, y, model.distribution, model.link;
+        wts = w_,
+        offset=offset,
+        maxiter=model.maxiter,
+        atol = model.atol,
+        rtol = model.rtol,
+        minstepfac = model.minstepfac
+    )
+
+    fitresult = FitResult(
+        GLM.coef(glm_reg_model),
+        GLM.dispersion(glm_reg_model),
+        (feature_names = features,)
+    )
     # form the report
-    report = glm_report(fitresult)
+    report = glm_report(glm_reg_model, model.report_params, features)
     cache = nothing
     # return
     return fitresult, cache, report
 end
 
-function MMI.fit(model::LinearBinaryClassifier, verbosity::Int, X, y)
+function MMI.fit(model::LinearBinaryClassifier, verbosity::Int, X, y, w=nothing)
     # apply the model
     decode = y[1]
     y_plain = MMI.int(y) .- 1 # 0, 1 of type Int
-    Xmatrix, offset = prepare_inputs(model, X)
-    features = glm_features(model, X)
-    data = glm_data(model, Xmatrix, y_plain, features)
-    form = glm_formula(model, features)
-    fitresult = GLM.glm(form, data, Distributions.Bernoulli(), model.link; offset=offset)
+    w_ = check_weights(w, y_plain)
+    Xmatrix, offset, features = prepare_inputs(model, X) 
+    glm_reg_model = GLM.glm(
+        Xmatrix, y_plain, Distributions.Bernoulli(), model.link;
+        wts = w_,
+        offset=offset,
+        maxiter=model.maxiter,
+        atol = model.atol,
+        rtol = model.rtol,
+        minstepfac = model.minstepfac
+    )
+    fitresult = FitResult(
+        GLM.coef(glm_reg_model),
+        GLM.dispersion(glm_reg_model),
+        (feature_names = features,)
+    )
     # form the report
-    report = glm_report(fitresult)
+    report = glm_report(glm_reg_model, model.report_params, features)
     cache = nothing
     # return
     return (fitresult, decode), cache, report
 end
 
-glm_fitresult(::LinearRegressor, fitresult) = fitresult
-glm_fitresult(::LinearCountRegressor, fitresult) = fitresult
+glm_fitresult(::Union{LinearRegressor, LinearCountRegressor}, fitresult) = fitresult
 glm_fitresult(::LinearBinaryClassifier, fitresult) = fitresult[1]
 
 function MMI.fitted_params(model::GLM_MODELS, fitresult)
     result = glm_fitresult(model, fitresult)
-    coef = GLM.coef(result)
-    features = filter(name -> name != "(Intercept)", GLM.coefnames(result))
-    intercept = model.fit_intercept ? coef[end] : nothing
-    return (; features=features, coef=coef, intercept=intercept)
+    coef_ = coef(result)
+    feature_names = copy(params(result).feature_names)
+    if model.fit_intercept
+        intercept = coef_[end]
+        coef_ = coef_[1:end-1]
+    else
+        intercept = zero(eltype(coef_))
+        coef_ = copy(coef_)
+    end
+    return (; feature_names=feature_names, coef=coef_, intercept=intercept)
 end
 
 
@@ -242,20 +423,46 @@ end
 #### PREDICT FUNCTIONS
 ####
 
-# more efficient than MLJBase fallback
-function MMI.predict_mean(model::Union{LinearRegressor,<:LinearCountRegressor}, fitresult, Xnew)
-    Xmatrix, offset = prepare_inputs(model, Xnew; handle_intercept=true)
-    return GLM.predict(fitresult, Xmatrix; offset=offset)
+function glm_predict(coef_, link::GLM.Link, aug_Xmatrix; offset)
+    η = aug_Xmatrix * coef_
+    isempty(offset) || broadcast!(+, η, η, offset)
+    μ = GLM.linkinv.(link, η)
+    return μ
 end
 
-function MMI.predict_mean(model::LinearBinaryClassifier, (fitresult, _), Xnew)
-    Xmatrix, offset = prepare_inputs(model, Xnew; handle_intercept=true)
-    return GLM.predict(fitresult.model, Xmatrix; offset=offset)
+glm_link(model) = model.link
+glm_link(::LinearRegressor) = GLM.IdentityLink()
+
+# more efficient than MLJBase fallback
+function MMI.predict_mean(model::GLM_MODELS, fr, Xnew)
+    # Note `fr` here is a tuple of `(fitresult, report, cache)`
+    fitresult = glm_fitresult(model, fr) # ::FitResult
+    coef_ = coef(fitresult)
+    link = glm_link(model)
+    # `predict_features` here are the features of `Xnew` excluding offsetcol
+    Xmatrix, offset, predict_features = prepare_inputs(model, Xnew, false)
+    size(Xmatrix, 2) == length(coef_) || throw(
+        DimensionMismatch("The number of features in training and test tables must match")
+    )
+    if model.check_features
+        fit_features = params(fitresult).feature_names
+        # `fit_features` here are all predictors(excluding offsetcol) 
+        # used in fitting the model.
+        features_match = fit_features == predict_features
+        features_match || throw(
+            ArgumentError(
+                "The features seen during fitting doesn't "*
+                "correspond with those seen during prediction."
+            )
+        )
+    end
+
+    return glm_predict(coef_, link, Xmatrix; offset=offset)
 end
 
 function MMI.predict(model::LinearRegressor, fitresult, Xnew)
     μ = MMI.predict_mean(model, fitresult, Xnew)
-    σ̂ = GLM.dispersion(fitresult.model)
+    σ̂ = dispersion(fitresult)
     return [GLM.Normal(μᵢ, σ̂) for μᵢ ∈ μ]
 end
 
@@ -276,41 +483,47 @@ end
 ####
 
 # shared metadata
-const GLM_REGS = Union{Type{<:LinearRegressor},
-                       Type{<:LinearBinaryClassifier},
-                       Type{<:LinearCountRegressor}}
+const GLM_REGS = Union{
+    Type{<:LinearRegressor},
+    Type{<:LinearBinaryClassifier},
+    Type{<:LinearCountRegressor}
+}
 
-metadata_pkg.((LinearRegressor, LinearBinaryClassifier, LinearCountRegressor),
-              name       = "GLM",
-              uuid       = "38e38edf-8417-5370-95a0-9cbb8c7f171a",
-              url        = "https://github.com/JuliaStats/GLM.jl",
-              julia      = true,
-              license    = "MIT",
-              is_wrapper = false
-              )
+metadata_pkg.(
+    (LinearRegressor, LinearBinaryClassifier, LinearCountRegressor),
+    name       = "GLM",
+    uuid       = "38e38edf-8417-5370-95a0-9cbb8c7f171a",
+    url        = "https://github.com/JuliaStats/GLM.jl",
+    julia      = true,
+    license    = "MIT",
+    is_wrapper = false
+)
 
-metadata_model(LinearRegressor,
-               input   = Table(Continuous),
-               target  = AbstractVector{Continuous},
-               weights = false,
-               descr   = LR_DESCR,
-               path    = "$PKG.LinearRegressor"
-               )
+metadata_model(
+    LinearRegressor,
+    input   = Table(Continuous),
+    target  = AbstractVector{Continuous},
+    supports_weights = true,
+    descr   = LR_DESCR,
+    path    = "$PKG.LinearRegressor"
+)
 
-metadata_model(LinearBinaryClassifier,
-               input   = Table(Continuous),
-               target  = AbstractVector{<:Finite{2}},
-               weights = false,
-               descr   = LBC_DESCR,
-               path    = "$PKG.LinearBinaryClassifier"
-               )
+metadata_model(
+    LinearBinaryClassifier,
+    input   = Table(Continuous),
+    target  = AbstractVector{<:Finite{2}},
+    supports_weights = true,
+    descr   = LBC_DESCR,
+    path    = "$PKG.LinearBinaryClassifier"
+)
 
-metadata_model(LinearCountRegressor,
-               input   = Table(Continuous),
-               target  = AbstractVector{Count},
-               weights = false,
-               descr   = LCR_DESCR,
-               path    = "$PKG.LinearCountRegressor"
-               )
+metadata_model(
+    LinearCountRegressor,
+    input   = Table(Continuous),
+    target  = AbstractVector{Count},
+    supports_weights = true,
+    descr   = LCR_DESCR,
+    path    = "$PKG.LinearCountRegressor"
+)
 
 end # module
