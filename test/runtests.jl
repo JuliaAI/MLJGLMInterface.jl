@@ -49,7 +49,7 @@ model = atom_ols
 @test is_supervised(model)
 @test package_license(model) == "MIT"
 @test prediction_type(model) == :probabilistic
-@test hyperparameters(model) == (:fit_intercept, :allowrankdeficient, :offsetcol)
+@test hyperparameters(model) == (:fit_intercept, :dropcollinear, :offsetcol)
 @test hyperparameter_types(model) == ("Bool", "Bool", "Union{Nothing, Symbol}")
 
 p_distr = predict(atom_ols, fitresult, selectrows(X, test))
