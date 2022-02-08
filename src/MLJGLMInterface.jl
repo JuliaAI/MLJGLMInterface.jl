@@ -21,7 +21,6 @@ import Distributions
 using Tables
 import GLM
 using GLM: FormulaTerm
-using Parameters
 
 const MMI = MLJModelInterface
 const PKG = "MLJGLMInterface"
@@ -47,24 +46,22 @@ const LCR_DESCR = "Linear count regressor with specified "*
 # MulticlassClassifier   --> Probabilistic w Multiclass target
 
 
-@with_kw_noshow mutable struct LinearRegressor <: MMI.Probabilistic
+@mlj_model mutable struct LinearRegressor <: MMI.Probabilistic
     fit_intercept::Bool = true
     allowrankdeficient::Bool = false
     offsetcol::Union{Symbol, Nothing} = nothing
 end
 
-@with_kw_noshow mutable struct LinearBinaryClassifier{L<:GLM.Link01} <: MMI.Probabilistic
+@mlj_model mutable struct LinearBinaryClassifier <: MMI.Probabilistic
     fit_intercept::Bool = true
-    link::L = GLM.LogitLink()
+    link::GLM.Link01 = GLM.LogitLink()
     offsetcol::Union{Symbol, Nothing} = nothing
 end
 
-@with_kw_noshow mutable struct LinearCountRegressor{
-    D<:Distributions.Distribution,L<:GLM.Link
-} <: MMI.Probabilistic
+@mlj_model mutable struct LinearCountRegressor <: MMI.Probabilistic
     fit_intercept::Bool = true
-    distribution::D = Distributions.Poisson()
-    link::L = GLM.LogLink()
+    distribution::Distributions.Distribution = Distributions.Poisson()
+    link::GLM.Link = GLM.LogLink()
     offsetcol::Union{Symbol, Nothing} = nothing
 end
 
