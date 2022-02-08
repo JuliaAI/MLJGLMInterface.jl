@@ -188,10 +188,7 @@ function MMI.fit(model::LinearRegressor, verbosity::Int, X, y)
     features = glm_features(model, X)
     data = glm_data(model, Xmatrix, y, features)
     form = glm_formula(model, features)
-    fitresult = GLM.glm(
-        form, data, Distributions.Normal(), GLM.IdentityLink();
-        offset=offset
-    )
+    fitresult = GLM.glm(form, data, Distributions.Normal(), GLM.IdentityLink(); offset)
     # form the report
     report = glm_report(fitresult)
     cache = nothing
@@ -205,10 +202,7 @@ function MMI.fit(model::LinearCountRegressor, verbosity::Int, X, y)
     features = glm_features(model, X)
     data = glm_data(model, Xmatrix, y, features)
     form = glm_formula(model, features)
-    fitresult = GLM.glm(
-        form, data, model.distribution, model.link;
-        offset=offset
-    )
+    fitresult = GLM.glm(form, data, model.distribution, model.link; offset)
     # form the report
     report = glm_report(fitresult)
     cache = nothing
@@ -224,10 +218,7 @@ function MMI.fit(model::LinearBinaryClassifier, verbosity::Int, X, y)
     features = glm_features(model, X)
     data = glm_data(model, Xmatrix, y_plain, features)
     form = glm_formula(model, features)
-    fitresult = GLM.glm(
-        form, data, Distributions.Bernoulli(), model.link;
-        offset=offset
-    )
+    fitresult = GLM.glm(form, data, Distributions.Bernoulli(), model.link; offset)
     # form the report
     report = glm_report(fitresult)
     cache = nothing
@@ -255,12 +246,12 @@ end
 # more efficient than MLJBase fallback
 function MMI.predict_mean(model::Union{LinearRegressor,<:LinearCountRegressor}, fitresult, Xnew)
     Xmatrix, offset = prepare_inputs(model, Xnew; handle_intercept=true)
-    return GLM.predict(fitresult, Xmatrix; offset=offset)
+    return GLM.predict(fitresult, Xmatrix; offset)
 end
 
 function MMI.predict_mean(model::LinearBinaryClassifier, (fitresult, _), Xnew)
     Xmatrix, offset = prepare_inputs(model, Xnew; handle_intercept=true)
-    return GLM.predict(fitresult.model, Xmatrix; offset=offset)
+    return GLM.predict(fitresult.model, Xmatrix; offset)
 end
 
 function MMI.predict(model::LinearRegressor, fitresult, Xnew)
