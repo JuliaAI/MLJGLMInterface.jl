@@ -15,14 +15,12 @@ module MLJGLMInterface
 export LinearRegressor, LinearBinaryClassifier, LinearCountRegressor
 
 import MLJModelInterface
-import MLJModelInterface: metadata_pkg, metadata_model,
-                          Table, Continuous, Count, Finite, OrderedFactor,
-                          Multiclass, @mlj_model
+import MLJModelInterface: metadata_pkg, metadata_model, Table, Continuous, Count, Finite,
+    OrderedFactor, Multiclass, @mlj_model
 import Distributions
 using Tables
 import GLM
 using GLM: FormulaTerm
-using Parameters
 
 const MMI = MLJModelInterface
 const PKG = "MLJGLMInterface"
@@ -37,6 +35,41 @@ const LBC_DESCR = "Linear binary classifier with "*
 const LCR_DESCR = "Linear count regressor with specified "*
     "link and distribution (e.g. log link and poisson)."
 
+
+####
+#### REGRESSION TYPES
+####
+
+# LinearRegressor        --> Probabilistic w Continuous Target
+# LinearCountRegressor   --> Probabilistic w Count Target
+# LinearBinaryClassifier --> Probabilistic w Binary target // logit,cauchit,..
+# MulticlassClassifier   --> Probabilistic w Multiclass target
+
+
+@mlj_model mutable struct LinearRegressor <: MMI.Probabilistic
+    fit_intercept::Bool = true
+    allowrankdeficient::Bool = false
+    offsetcol::Union{Symbol, Nothing} = nothing
+end
+
+@mlj_model mutable struct LinearBinaryClassifier <: MMI.Probabilistic
+    fit_intercept::Bool = true
+    link::GLM.Link01 = GLM.LogitLink()
+    offsetcol::Union{Symbol, Nothing} = nothing
+end
+
+@mlj_model mutable struct LinearCountRegressor <: MMI.Probabilistic
+    fit_intercept::Bool = true
+    distribution::Distributions.Distribution = Distributions.Poisson()
+    link::GLM.Link = GLM.LogLink()
+    offsetcol::Union{Symbol, Nothing} = nothing
+end
+
+# Short names for convenience here
+
+const GLM_MODELS = Union{
+    <:LinearRegressor, <:LinearBinaryClassifier, <:LinearCountRegressor
+}
 
 ###
 ## Helper functions
@@ -101,38 +134,6 @@ function glm_report(fitresult)
     return (; deviance=deviance, dof_residual=dof_residual, stderror=stderror, vcov=vcov)
 end
 
-####
-#### REGRESSION TYPES
-####
-
-# LinearRegressor        --> Probabilistic w Continuous Target
-# LinearCountRegressor   --> Probabilistic w Count Target
-# LinearBinaryClassifier --> Probabilistic w Binary target // logit,cauchit,..
-# MulticlassClassifier   --> Probabilistic w Multiclass target
-
-
-@with_kw_noshow mutable struct LinearRegressor <: MMI.Probabilistic
-    fit_intercept::Bool                 = true
-    allowrankdeficient::Bool            = false
-    offsetcol::Union{Symbol, Nothing}   = nothing
-end
-
-@with_kw_noshow mutable struct LinearBinaryClassifier{L<:GLM.Link01} <: MMI.Probabilistic
-    fit_intercept::Bool                 = true
-    link::L                             = GLM.LogitLink()
-    offsetcol::Union{Symbol, Nothing}   = nothing
-end
-
-@with_kw_noshow mutable struct LinearCountRegressor{D<:Distributions.Distribution,L<:GLM.Link} <: MMI.Probabilistic
-    fit_intercept::Bool                 = true
-    distribution::D                     = Distributions.Poisson()
-    link::L                             = GLM.LogLink()
-    offsetcol::Union{Symbol, Nothing}   = nothing
-end
-
-# Short names for convenience here
-
-const GLM_MODELS = Union{<:LinearRegressor, <:LinearBinaryClassifier, <:LinearCountRegressor}
 
 """
     glm_formula(model, features) -> FormulaTerm
@@ -187,7 +188,7 @@ function MMI.fit(model::LinearRegressor, verbosity::Int, X, y)
     features = glm_features(model, X)
     data = glm_data(model, Xmatrix, y, features)
     form = glm_formula(model, features)
-    fitresult = GLM.glm(form, data, Distributions.Normal(), GLM.IdentityLink(); offset=offset)
+    fitresult = GLM.glm(form, data, Distributions.Normal(), GLM.IdentityLink(); offset)
     # form the report
     report = glm_report(fitresult)
     cache = nothing
@@ -201,7 +202,7 @@ function MMI.fit(model::LinearCountRegressor, verbosity::Int, X, y)
     features = glm_features(model, X)
     data = glm_data(model, Xmatrix, y, features)
     form = glm_formula(model, features)
-    fitresult = GLM.glm(form, data, model.distribution, model.link; offset=offset)
+    fitresult = GLM.glm(form, data, model.distribution, model.link; offset)
     # form the report
     report = glm_report(fitresult)
     cache = nothing
@@ -217,7 +218,7 @@ function MMI.fit(model::LinearBinaryClassifier, verbosity::Int, X, y)
     features = glm_features(model, X)
     data = glm_data(model, Xmatrix, y_plain, features)
     form = glm_formula(model, features)
-    fitresult = GLM.glm(form, data, Distributions.Bernoulli(), model.link; offset=offset)
+    fitresult = GLM.glm(form, data, Distributions.Bernoulli(), model.link; offset)
     # form the report
     report = glm_report(fitresult)
     cache = nothing
@@ -245,12 +246,12 @@ end
 # more efficient than MLJBase fallback
 function MMI.predict_mean(model::Union{LinearRegressor,<:LinearCountRegressor}, fitresult, Xnew)
     Xmatrix, offset = prepare_inputs(model, Xnew; handle_intercept=true)
-    return GLM.predict(fitresult, Xmatrix; offset=offset)
+    return GLM.predict(fitresult, Xmatrix; offset)
 end
 
 function MMI.predict_mean(model::LinearBinaryClassifier, (fitresult, _), Xnew)
     Xmatrix, offset = prepare_inputs(model, Xnew; handle_intercept=true)
-    return GLM.predict(fitresult.model, Xmatrix; offset=offset)
+    return GLM.predict(fitresult.model, Xmatrix; offset)
 end
 
 function MMI.predict(model::LinearRegressor, fitresult, Xnew)
@@ -276,41 +277,45 @@ end
 ####
 
 # shared metadata
-const GLM_REGS = Union{Type{<:LinearRegressor},
-                       Type{<:LinearBinaryClassifier},
-                       Type{<:LinearCountRegressor}}
+const GLM_REGS = Union{
+    Type{<:LinearRegressor}, Type{<:LinearBinaryClassifier}, Type{<:LinearCountRegressor}
+}
 
-metadata_pkg.((LinearRegressor, LinearBinaryClassifier, LinearCountRegressor),
-              name       = "GLM",
-              uuid       = "38e38edf-8417-5370-95a0-9cbb8c7f171a",
-              url        = "https://github.com/JuliaStats/GLM.jl",
-              julia      = true,
-              license    = "MIT",
-              is_wrapper = false
-              )
+metadata_pkg.(
+    (LinearRegressor, LinearBinaryClassifier, LinearCountRegressor),
+    name = "GLM",
+    uuid = "38e38edf-8417-5370-95a0-9cbb8c7f171a",
+    url = "https://github.com/JuliaStats/GLM.jl",
+    julia = true,
+    license = "MIT",
+    is_wrapper = false
+)
 
-metadata_model(LinearRegressor,
-               input   = Table(Continuous),
-               target  = AbstractVector{Continuous},
-               weights = false,
-               descr   = LR_DESCR,
-               path    = "$PKG.LinearRegressor"
-               )
+metadata_model(
+    LinearRegressor,
+    input = Table(Continuous),
+    target = AbstractVector{Continuous},
+    weights = false,
+    descr = LR_DESCR,
+    path = "$PKG.LinearRegressor"
+)
 
-metadata_model(LinearBinaryClassifier,
-               input   = Table(Continuous),
-               target  = AbstractVector{<:Finite{2}},
-               weights = false,
-               descr   = LBC_DESCR,
-               path    = "$PKG.LinearBinaryClassifier"
-               )
+metadata_model(
+    LinearBinaryClassifier,
+    input = Table(Continuous),
+    target = AbstractVector{<:Finite{2}},
+    weights = false,
+    descr = LBC_DESCR,
+    path = "$PKG.LinearBinaryClassifier"
+)
 
-metadata_model(LinearCountRegressor,
-               input   = Table(Continuous),
-               target  = AbstractVector{Count},
-               weights = false,
-               descr   = LCR_DESCR,
-               path    = "$PKG.LinearCountRegressor"
-               )
+metadata_model(
+    LinearCountRegressor,
+    input = Table(Continuous),
+    target = AbstractVector{Count},
+    weights = false,
+    descr = LCR_DESCR,
+    path = "$PKG.LinearCountRegressor"
+)
 
 end # module
