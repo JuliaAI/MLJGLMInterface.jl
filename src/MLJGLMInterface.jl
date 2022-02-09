@@ -125,16 +125,32 @@ function prepare_inputs(model, X; handle_intercept=false)
 end
 
 """
-    glm_report(glm_model)
+    glm_report(glm_model, features)
 
 Report based on the fitted `LinearModel/GeneralizedLinearModel`, `glm_model`.
 """
-function glm_report(glm_model)
+function glm_report(glm_model, features)
     deviance = GLM.deviance(glm_model)
     dof_residual = GLM.dof_residual(glm_model)
     stderror = GLM.stderror(glm_model)
     vcov = GLM.vcov(glm_model)
-    return (; deviance=deviance, dof_residual=dof_residual, stderror=stderror, vcov=vcov)
+    coef_table = GLM.coeftable(glm_model)
+    # Update the variable names in the `coef_table` with the actual variable
+    # names seen during fit.
+    if length(coef_table.rownms) == length(features)
+        # This means `fit_intercept` is false
+        coef_table.rownms = string.(features)
+    else      
+        coef_table.rownms = [
+            (string(features[i]) for i in eachindex(features))...; "(Intercept)"
+        ]
+    end
+    return (;
+        deviance=deviance,
+        dof_residual=dof_residual,
+        stderror=stderror, vcov=vcov,
+        coef_table=coef_table
+    )
 end
 
 
@@ -224,7 +240,7 @@ function MMI.fit(model::LinearRegressor, verbosity::Int, X, y)
     )
 
     # form the report
-    report = glm_report(fitted_lm)
+    report = glm_report(fitted_lm, features)
     cache = nothing
     # return
     return fitresult, cache, report
@@ -241,7 +257,7 @@ function MMI.fit(model::LinearCountRegressor, verbosity::Int, X, y)
         GLM.coef(fitted_glm), GLM.dispersion(fitted_glm), (feature_names = features,)
     )
     # form the report
-    report = glm_report(fitted_glm)
+    report = glm_report(fitted_glm, features)
     cache = nothing
     # return
     return fitresult, cache, report
@@ -260,7 +276,7 @@ function MMI.fit(model::LinearBinaryClassifier, verbosity::Int, X, y)
         GLM.coef(fitted_glm), GLM.dispersion(fitted_glm), (feature_names = features,)
     )
     # form the report
-    report = glm_report(fitted_glm)
+    report = glm_report(fitted_glm, features)
     cache = nothing
     # return
     return (fitresult, decode), cache, report

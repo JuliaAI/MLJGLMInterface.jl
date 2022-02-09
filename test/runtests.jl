@@ -194,8 +194,8 @@ end
     X = (a=[1, 9, 4, 2], b=[1, 2, 1, 4], c=[9, 1, 5, 3])
     y = categorical([true, true, false, false])
     lr = LinearBinaryClassifier(fit_intercept=true)
-    fitresult, _, _ = fit(lr, 1, X, y)
-    ctable = coeftable(first(fitresult))
+    fitresult, _, report = fit(lr, 1, X, y)
+    ctable = last(report)
     parameters = ctable.rownms # Row names.
     @test parameters == ["a", "b", "c", "(Intercept)"]
     intercept = ctable.cols[1][4]
@@ -203,7 +203,7 @@ end
     @test mean(cross_entropy(yhat, y)) < 0.6
 
     fp = fitted_params(lr, fitresult)
-    @test fp.features == ["a", "b", "c"]
+    @test fp.feature_names == [:a, :b, :c]
     @test :intercept in keys(fp)
     @test intercept == fp.intercept
 end
