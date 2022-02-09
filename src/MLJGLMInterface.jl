@@ -292,7 +292,7 @@ function MMI.fitted_params(model::GLM_MODELS, fitresult)
         intercept = zero(eltype(coef))
         coef_ = copy(coef)
     end
-    return (; feature_names=feature_names, coef=coef_, intercept=intercept)
+    return (; feature_names, coef=coef_, intercept)
 end
 
 
