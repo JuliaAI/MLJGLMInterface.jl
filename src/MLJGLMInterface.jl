@@ -190,8 +190,8 @@ function glm_features(model, X)
         first_row = iterate(Tables.rows(X), 1)[1]
         table_features = first_row === nothing ? Symbol[] : _to_array(keys(first_row))
     end
-    features = filter!(x -> x != model.offsetcol, table_features)
-    return features
+    filter!(!=(model.offsetcol), table_features)
+    return table_features
 end
 
 ####
