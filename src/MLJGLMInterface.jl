@@ -145,12 +145,7 @@ function glm_report(glm_model, features)
             (string(features[i]) for i in eachindex(features))...; "(Intercept)"
         ]
     end
-    return (;
-        deviance=deviance,
-        dof_residual=dof_residual,
-        stderror=stderror, vcov=vcov,
-        coef_table=coef_table
-    )
+    return (; deviance, dof_residual, stderror, vcov, coef_table)
 end
 
 
