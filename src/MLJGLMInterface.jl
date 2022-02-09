@@ -48,7 +48,7 @@ const LCR_DESCR = "Linear count regressor with specified "*
 
 @mlj_model mutable struct LinearRegressor <: MMI.Probabilistic
     fit_intercept::Bool = true
-    allowrankdeficient::Bool = false
+    dropcollinear::Bool = false
     offsetcol::Union{Symbol, Nothing} = nothing
 end
 
@@ -186,9 +186,10 @@ function MMI.fit(model::LinearRegressor, verbosity::Int, X, y)
     # apply the model
     Xmatrix, offset = prepare_inputs(model, X)
     features = glm_features(model, X)
-    data = glm_data(model, Xmatrix, y, features)
+    y_ = isempty(offset) ? y : y .- offset
+    data = glm_data(model, Xmatrix, y_, features)
     form = glm_formula(model, features)
-    fitresult = GLM.glm(form, data, Distributions.Normal(), GLM.IdentityLink(); offset)
+    fitresult = GLM.lm(form, data; model.dropcollinear)
     # form the report
     report = glm_report(fitresult)
     cache = nothing
@@ -244,9 +245,21 @@ end
 ####
 
 # more efficient than MLJBase fallback
-function MMI.predict_mean(model::Union{LinearRegressor,<:LinearCountRegressor}, fitresult, Xnew)
+function MMI.predict_mean(model::LinearCountRegressor, fitresult, Xnew)
     Xmatrix, offset = prepare_inputs(model, Xnew; handle_intercept=true)
     return GLM.predict(fitresult, Xmatrix; offset)
+end
+
+function MMI.predict_mean(model::LinearRegressor, fitresult, Xnew)
+    Xmatrix, offset = prepare_inputs(model, Xnew; handle_intercept=true)
+    return glm_predict(fitresult, Xmatrix, model.offsetcol, offset)
+end
+
+# barrier function to aid performance
+function glm_predict(fitresult, Xmatrix, offsetcol, offset)
+    ŷ = GLM.predict(fitresult, Xmatrix)
+    ŷ_ = offsetcol === nothing ? ŷ : ŷ .+ offset
+    return ŷ_
 end
 
 function MMI.predict_mean(model::LinearBinaryClassifier, (fitresult, _), Xnew)
