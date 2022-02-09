@@ -85,6 +85,9 @@ function augment_X(X::Matrix, b::Bool)::Matrix
     return X
 end
 
+_to_vector(v::Vector) = v
+_to_vector(v) = collect(v)
+
 """
     split_X_offset(X, offsetcol::Nothing)
 
@@ -103,7 +106,7 @@ function split_X_offset(X, offsetcol::Symbol)
     ct = Tables.columntable(X)
     offset = Tables.getcolumn(ct, offsetcol)
     newX = Base.structdiff(ct, NamedTuple{(offsetcol,)})
-    return newX, Vector(offset)
+    return newX, _to_vector(offset)
 end
 
 """
@@ -122,15 +125,15 @@ function prepare_inputs(model, X; handle_intercept=false)
 end
 
 """
-    glm_report(fitresult)
+    glm_report(glm_model)
 
-Report based on the `fitresult` of a GLM model.
+Report based on the fitted `LinearModel/GeneralizedLinearModel`, `glm_model`.
 """
-function glm_report(fitresult)
-    deviance = GLM.deviance(fitresult)
-    dof_residual = GLM.dof_residual(fitresult)
-    stderror = GLM.stderror(fitresult)
-    vcov = GLM.vcov(fitresult)
+function glm_report(glm_model)
+    deviance = GLM.deviance(glm_model)
+    dof_residual = GLM.dof_residual(glm_model)
+    stderror = GLM.stderror(glm_model)
+    vcov = GLM.vcov(glm_model)
     return (; deviance=deviance, dof_residual=dof_residual, stderror=stderror, vcov=vcov)
 end
 
@@ -160,6 +163,9 @@ function glm_data(model, Xmatrix, y, features)
     return data
 end
 
+_to_array(v::AbstractArray) = v
+_to_array(v) = collect(v)
+
 """
     glm_features(model, X)
 
@@ -168,12 +174,12 @@ glm formula and glm data header.
 """
 function glm_features(model, X)
     if Tables.columnaccess(X)
-        table_features = keys(Tables.columns(X))
+        table_features = _to_array(keys(Tables.columns(X)))
     else
         first_row = iterate(Tables.rows(X), 1)[1]
-        table_features = first_row === nothing ? Symbol[] : keys(first_row)
+        table_features = first_row === nothing ? Symbol[] : _to_array(keys(first_row))
     end
-    features = filter(x -> x != model.offsetcol, table_features)
+    features = filter!(x -> x != model.offsetcol, table_features)
     return features
 end
 
@@ -181,6 +187,29 @@ end
 #### FIT FUNCTIONS
 ####
 
+struct FitResult{V<:AbstractVector, T, R}
+    "Vector containg coeficients of the predictors and intercept"
+    coefs::V
+    "An estimate of the dispersion parameter of the glm model. "
+    dispersion::T
+    "Other fitted parameters specific to a fitted model"
+    params::R
+    function FitResult(
+        coefs::AbstractVector,
+        dispersion,
+        params
+    )
+        return new{
+            typeof(coefs),
+            typeof(dispersion),
+            typeof(params)
+        }(coefs, dispersion, params)
+    end
+end
+
+coefs(fr::FitResult) = fr.coefs
+dispersion(fr::FitResult) = fr.dispersion
+params(fr::FitResult) = fr.params
 
 function MMI.fit(model::LinearRegressor, verbosity::Int, X, y)
     # apply the model
@@ -189,9 +218,13 @@ function MMI.fit(model::LinearRegressor, verbosity::Int, X, y)
     y_ = isempty(offset) ? y : y .- offset
     data = glm_data(model, Xmatrix, y_, features)
     form = glm_formula(model, features)
-    fitresult = GLM.lm(form, data; model.dropcollinear)
+    fitted_lm = GLM.lm(form, data; model.dropcollinear).model
+    fitresult = FitResult(
+        GLM.coef(fitted_lm), GLM.dispersion(fitted_lm), (feature_names = features,)
+    )
+
     # form the report
-    report = glm_report(fitresult)
+    report = glm_report(fitted_lm)
     cache = nothing
     # return
     return fitresult, cache, report
@@ -203,9 +236,12 @@ function MMI.fit(model::LinearCountRegressor, verbosity::Int, X, y)
     features = glm_features(model, X)
     data = glm_data(model, Xmatrix, y, features)
     form = glm_formula(model, features)
-    fitresult = GLM.glm(form, data, model.distribution, model.link; offset)
+    fitted_glm = GLM.glm(form, data, model.distribution, model.link; offset).model
+    fitresult = FitResult(
+        GLM.coef(fitted_glm), GLM.dispersion(fitted_glm), (feature_names = features,)
+    )
     # form the report
-    report = glm_report(fitresult)
+    report = glm_report(fitted_glm)
     cache = nothing
     # return
     return fitresult, cache, report
@@ -219,9 +255,12 @@ function MMI.fit(model::LinearBinaryClassifier, verbosity::Int, X, y)
     features = glm_features(model, X)
     data = glm_data(model, Xmatrix, y_plain, features)
     form = glm_formula(model, features)
-    fitresult = GLM.glm(form, data, Distributions.Bernoulli(), model.link; offset)
+    fitted_glm = GLM.glm(form, data, Distributions.Bernoulli(), model.link; offset).model
+    fitresult = FitResult(
+        GLM.coef(fitted_glm), GLM.dispersion(fitted_glm), (feature_names = features,)
+    )
     # form the report
-    report = glm_report(fitresult)
+    report = glm_report(fitted_glm)
     cache = nothing
     # return
     return (fitresult, decode), cache, report
@@ -233,10 +272,16 @@ glm_fitresult(::LinearBinaryClassifier, fitresult) = fitresult[1]
 
 function MMI.fitted_params(model::GLM_MODELS, fitresult)
     result = glm_fitresult(model, fitresult)
-    coef = GLM.coef(result)
-    features = filter(name -> name != "(Intercept)", GLM.coefnames(result))
-    intercept = model.fit_intercept ? coef[end] : nothing
-    return (; features=features, coef=coef, intercept=intercept)
+    coef = coefs(result)
+    feature_names = copy(params(result).feature_names)
+    if model.fit_intercept
+        intercept = coef[end]
+        coef_ = coef[1:end-1]
+    else
+        intercept = zero(eltype(coef))
+        coef_ = copy(coef)
+    end
+    return (; feature_names=feature_names, coef=coef_, intercept=intercept)
 end
 
 
@@ -244,32 +289,28 @@ end
 #### PREDICT FUNCTIONS
 ####
 
-# more efficient than MLJBase fallback
-function MMI.predict_mean(model::LinearCountRegressor, fitresult, Xnew)
-    Xmatrix, offset = prepare_inputs(model, Xnew; handle_intercept=true)
-    return GLM.predict(fitresult, Xmatrix; offset)
-end
+glm_link(model) = model.link
+glm_link(::LinearRegressor) = GLM.IdentityLink()
 
-function MMI.predict_mean(model::LinearRegressor, fitresult, Xnew)
+# more efficient than MLJBase fallback
+function MMI.predict_mean(model::GLM_MODELS, fitresult, Xnew)
     Xmatrix, offset = prepare_inputs(model, Xnew; handle_intercept=true)
-    return glm_predict(fitresult, Xmatrix, model.offsetcol, offset)
+    result = glm_fitresult(model, fitresult) # ::FitResult
+    coef = coefs(result)
+    link = glm_link(model)
+    return glm_predict(link, coef, Xmatrix, model.offsetcol, offset)
 end
 
 # barrier function to aid performance
-function glm_predict(fitresult, Xmatrix, offsetcol, offset)
-    ŷ = GLM.predict(fitresult, Xmatrix)
-    ŷ_ = offsetcol === nothing ? ŷ : ŷ .+ offset
-    return ŷ_
-end
-
-function MMI.predict_mean(model::LinearBinaryClassifier, (fitresult, _), Xnew)
-    Xmatrix, offset = prepare_inputs(model, Xnew; handle_intercept=true)
-    return GLM.predict(fitresult.model, Xmatrix; offset)
+function glm_predict(link, coef, Xmatrix, offsetcol, offset) 
+    η = offsetcol === nothing ? (Xmatrix * coef) : (Xmatrix * coef .+ offset)
+    μ = GLM.linkinv.(link, η)
+    return μ
 end
 
 function MMI.predict(model::LinearRegressor, fitresult, Xnew)
     μ = MMI.predict_mean(model, fitresult, Xnew)
-    σ̂ = GLM.dispersion(fitresult.model)
+    σ̂ = dispersion(fitresult)
     return [GLM.Normal(μᵢ, σ̂) for μᵢ ∈ μ]
 end
 

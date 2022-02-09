@@ -54,7 +54,9 @@ model = atom_ols
 
 p_distr = predict(atom_ols, fitresult, selectrows(X, test))
 
-@test p_distr[1] == Distributions.Normal(p[1], GLM.dispersion(fitresult.model))
+@test p_distr[1] == Distributions.Normal(
+    p[1], MLJGLMInterface.dispersion(fitresult)
+)
 
 ###
 ### Logistic regression
@@ -158,7 +160,7 @@ end
         fp = fitted_params(lr, fitresult)
 
         @test fp.coef ≈ [2, -1] atol=0.03
-        @test fp.intercept === nothing
+        @test iszero(fp.intercept)
     end
     @testset "Test Linear regression with offset" begin
         N = 1000
