@@ -205,17 +205,6 @@ struct FitResult{V<:AbstractVector, T, R}
     dispersion::T
     "Other fitted parameters specific to a fitted model"
     params::R
-    function FitResult(
-        coefs::AbstractVector,
-        dispersion,
-        params
-    )
-        return new{
-            typeof(coefs),
-            typeof(dispersion),
-            typeof(params)
-        }(coefs, dispersion, params)
-    end
 end
 
 coefs(fr::FitResult) = fr.coefs
