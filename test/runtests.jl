@@ -54,7 +54,8 @@ model = atom_ols
 
 p_distr = predict(atom_ols, fitresult, selectrows(X, test))
 
-@test p_distr[1] == Distributions.Normal(p[1], GLM.dispersion(fitresult.model))
+dispersion =  MLJGLMInterface.dispersion(fitresult)
+@test p_distr[1] == Distributions.Normal(p[1], dispersion)
 
 ###
 ### Logistic regression
@@ -158,7 +159,7 @@ end
         fp = fitted_params(lr, fitresult)
 
         @test fp.coef ≈ [2, -1] atol=0.03
-        @test fp.intercept === nothing
+        @test iszero(fp.intercept)
     end
     @testset "Test Linear regression with offset" begin
         N = 1000
@@ -192,8 +193,8 @@ end
     X = (a=[1, 9, 4, 2], b=[1, 2, 1, 4], c=[9, 1, 5, 3])
     y = categorical([true, true, false, false])
     lr = LinearBinaryClassifier(fit_intercept=true)
-    fitresult, _, _ = fit(lr, 1, X, y)
-    ctable = coeftable(first(fitresult))
+    fitresult, _, report = fit(lr, 1, X, y)
+    ctable = last(report)
     parameters = ctable.rownms # Row names.
     @test parameters == ["a", "b", "c", "(Intercept)"]
     intercept = ctable.cols[1][4]
@@ -201,7 +202,7 @@ end
     @test mean(cross_entropy(yhat, y)) < 0.6
 
     fp = fitted_params(lr, fitresult)
-    @test fp.features == ["a", "b", "c"]
+    @test fp.features == [:a, :b, :c]
     @test :intercept in keys(fp)
     @test intercept == fp.intercept
 end
