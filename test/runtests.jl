@@ -202,7 +202,7 @@ end
     @test mean(cross_entropy(yhat, y)) < 0.6
 
     fp = fitted_params(lr, fitresult)
-    @test fp.feature_names == [:a, :b, :c]
+    @test fp.features == [:a, :b, :c]
     @test :intercept in keys(fp)
     @test intercept == fp.intercept
 end

@@ -220,7 +220,7 @@ function MMI.fit(model::LinearRegressor, verbosity::Int, X, y)
     form = glm_formula(model, features)
     fitted_lm = GLM.lm(form, data; model.dropcollinear).model
     fitresult = FitResult(
-        GLM.coef(fitted_lm), GLM.dispersion(fitted_lm), (feature_names = features,)
+        GLM.coef(fitted_lm), GLM.dispersion(fitted_lm), (features = features,)
     )
 
     # form the report
@@ -238,7 +238,7 @@ function MMI.fit(model::LinearCountRegressor, verbosity::Int, X, y)
     form = glm_formula(model, features)
     fitted_glm = GLM.glm(form, data, model.distribution, model.link; offset).model
     fitresult = FitResult(
-        GLM.coef(fitted_glm), GLM.dispersion(fitted_glm), (feature_names = features,)
+        GLM.coef(fitted_glm), GLM.dispersion(fitted_glm), (features = features,)
     )
     # form the report
     report = glm_report(fitted_glm, features)
@@ -257,7 +257,7 @@ function MMI.fit(model::LinearBinaryClassifier, verbosity::Int, X, y)
     form = glm_formula(model, features)
     fitted_glm = GLM.glm(form, data, Distributions.Bernoulli(), model.link; offset).model
     fitresult = FitResult(
-        GLM.coef(fitted_glm), GLM.dispersion(fitted_glm), (feature_names = features,)
+        GLM.coef(fitted_glm), GLM.dispersion(fitted_glm), (features = features,)
     )
     # form the report
     report = glm_report(fitted_glm, features)
@@ -273,7 +273,7 @@ glm_fitresult(::LinearBinaryClassifier, fitresult) = fitresult[1]
 function MMI.fitted_params(model::GLM_MODELS, fitresult)
     result = glm_fitresult(model, fitresult)
     coef = coefs(result)
-    feature_names = copy(params(result).feature_names)
+    features = copy(params(result).features)
     if model.fit_intercept
         intercept = coef[end]
         coef_ = coef[1:end-1]
@@ -281,7 +281,7 @@ function MMI.fitted_params(model::GLM_MODELS, fitresult)
         intercept = zero(eltype(coef))
         coef_ = copy(coef)
     end
-    return (; feature_names, coef=coef_, intercept)
+    return (; features, coef=coef_, intercept)
 end
 
 
