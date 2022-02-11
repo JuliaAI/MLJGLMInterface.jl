@@ -152,7 +152,7 @@ function glm_report(glm_model, features, reportkeys)
     if in(:stderror, reportkeys)
         report_dict[:stderror] = GLM.stderror(glm_model)
     end
-    if in(:vcov, reportkeys)
+    if :vcov in reportkeys
         report_dict[:vcov] = GLM.vcov(glm_model)
     end
     if :coef_table in reportkeys
