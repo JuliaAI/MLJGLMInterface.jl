@@ -163,9 +163,7 @@ function glm_report(glm_model, features, reportkeys)
             # This means `fit_intercept` is false
             coef_table.rownms = string.(features)
         else      
-            coef_table.rownms = [
-                (string(features[i]) for i in eachindex(features))...; "(Intercept)"
-            ]
+            coef_table.rownms = [string.(features); "(Intercept)"]
         end
         report_dict[:coef_table] = coef_table
     end
