@@ -228,6 +228,7 @@ end
     _, _, report = fit(lr, 1, X, y)
     @test :deviance in keys(report) 
     @test :stderror in keys(report)
+@test :dof_residual ∉ keys(report)
 
     # check that an empty `NamedTuple` is outputed for
     # `report_params === nothing`
