@@ -17,96 +17,149 @@ expit(X) = 1 ./ (1 .+ exp.(-X))
 ###
 ### OLSREGRESSOR
 ###
+@testset "OLSREGRESSOR" begin
+    X, y = @load_boston
+    w = ones(eltype(y), length(y))
 
-X, y = @load_boston
+    train, test = partition(eachindex(y), 0.7)
 
-train, test = partition(eachindex(y), 0.7)
+    atom_ols = LinearRegressor()
 
-atom_ols = LinearRegressor()
+    Xtrain = selectrows(X, train)
+    ytrain = selectrows(y, train)
+    wtrain = selectrows(w, train)
+    Xtest  = selectrows(X, test)
+    
+    fitresult, _, _ = fit(atom_ols, 1, Xtrain, ytrain)
+    θ = MLJBase.fitted_params(atom_ols, fitresult)
 
-Xtrain = selectrows(X, train)
-ytrain = selectrows(y, train)
-Xtest  = selectrows(X, test)
+    p = predict_mean(atom_ols, fitresult, Xtest)
 
-fitresult, _, _ = fit(atom_ols, 1, Xtrain, ytrain)
-θ = MLJBase.fitted_params(atom_ols, fitresult)
+    fitresultw, _, _ = fit(atom_ols, 1, Xtrain, ytrain, wtrain)
+    θw = MLJBase.fitted_params(atom_ols, fitresult)
 
-p = predict_mean(atom_ols, fitresult, Xtest)
+    pw = predict_mean(atom_ols, fitresultw, Xtest)
 
-# hand made regression to compare
+    Xa = MLJBase.matrix(X) # convert(Matrix{Float64}, X)
+    Xa1 = hcat(Xa, ones(size(Xa, 1)))
+    coefs = Xa1[train, :] \ y[train]
+    p2 = Xa1[test, :] * coefs
 
-Xa = MLJBase.matrix(X) # convert(Matrix{Float64}, X)
-Xa1 = hcat(Xa, ones(size(Xa, 1)))
-coefs = Xa1[train, :] \ y[train]
-p2 = Xa1[test, :] * coefs
+    @test p ≈ p2
+    @test pw ≈ p2
 
-@test p ≈ p2
+    # test `predict` object
+    p_distr = predict(atom_ols, fitresult, selectrows(X, test))
+    dispersion =  MLJGLMInterface.dispersion(fitresult)
+    @test p_distr[1] == Distributions.Normal(p[1], dispersion)
 
-model = atom_ols
-@test name(model) == "LinearRegressor"
-@test package_name(model) == "GLM"
-@test is_pure_julia(model)
-@test is_supervised(model)
-@test package_license(model) == "MIT"
-@test prediction_type(model) == :probabilistic
-@test hyperparameters(model) == (:fit_intercept, :dropcollinear, :offsetcol, :report_keys)
-hyp_types = hyperparameter_types(model)
-@test hyp_types[1] == "Bool"
-@test hyp_types[2] == "Bool"
-@test hyp_types[3] == "Union{Nothing, Symbol}"
-@test hyp_types[4] == "Union{Nothing, AbstractVector{Symbol}}"
-
-p_distr = predict(atom_ols, fitresult, selectrows(X, test))
-
-dispersion =  MLJGLMInterface.dispersion(fitresult)
-@test p_distr[1] == Distributions.Normal(p[1], dispersion)
+    # test metadata
+    model = atom_ols
+    @test name(model) == "LinearRegressor"
+    @test package_name(model) == "GLM"
+    @test supports_weights(model)
+    @test is_pure_julia(model)
+    @test is_supervised(model)
+    @test package_license(model) == "MIT"
+    @test prediction_type(model) == :probabilistic
+    @test hyperparameters(model) == (:fit_intercept, :dropcollinear, :offsetcol, :report_keys)
+    hyp_types = hyperparameter_types(model)
+    @test hyp_types[1] == "Bool"
+    @test hyp_types[2] == "Bool"
+    @test hyp_types[3] == "Union{Nothing, Symbol}"
+    @test hyp_types[4] == "Union{Nothing, AbstractVector{Symbol}}"
+    
+end
 
 ###
 ### Logistic regression
 ###
+@testset "Logistic regression" begin
+    rng = StableRNGs.StableRNG(0)
 
-rng = StableRNGs.StableRNG(0)
+    N = 100
+    X = MLJBase.table(rand(rng, N, 4));
+    ycont = 2*X.x1 - X.x3 + 0.6*rand(rng, N)
+    y = categorical(ycont .> mean(ycont))
+    w = ones(length(y))
 
-N = 100
-X = MLJBase.table(rand(rng, N, 4));
-ycont = 2*X.x1 - X.x3 + 0.6*rand(rng, N)
-y = categorical(ycont .> mean(ycont))
+    lr = LinearBinaryClassifier()
+    pr = LinearBinaryClassifier(link=GLM.ProbitLink())
 
-lr = LinearBinaryClassifier()
-fitresult, _, report = fit(lr, 1, X, y)
+    fitresult, _, report = fit(lr, 1, X, y)
+    yhat = predict(lr, fitresult, X)
+    @test mean(cross_entropy(yhat, y)) < 0.25
+    fitresult1, _, report1 = fit(pr, 1, X, y)
+    yhat1 = predict(pr, fitresult1, X)
+    @test mean(cross_entropy(yhat1, y)) < 0.25
 
-yhat = predict(lr, fitresult, X)
-@test mean(cross_entropy(yhat, y)) < 0.25
+    fitresultw, _, reportw = fit(lr, 1, X, y, w)
+    yhatw = predict(lr, fitresultw, X)
+    @test mean(cross_entropy(yhatw, y)) < 0.25
+    @test yhatw ≈ yhat
+    fitresultw1, _, reportw1 = fit(pr, 1, X, y, w)
+    yhatw1 = predict(pr, fitresultw1, X)
+    @test mean(cross_entropy(yhatw1, y)) < 0.25
+    @test yhatw1 ≈ yhat1
 
-pr = LinearBinaryClassifier(link=GLM.ProbitLink())
-fitresult, _, report = fit(pr, 1, X, y)
-yhat = predict(lr, fitresult, X)
-@test mean(cross_entropy(yhat, y)) < 0.25
+    fitted_params(pr, fitresult)
 
-fitted_params(pr, fitresult)
-
+    # Test metadata
+    model = lr
+    @test name(model) == "LinearBinaryClassifier"
+    @test package_name(model) == "GLM"
+    @test supports_weights(model)
+    @test is_pure_julia(model)
+    @test is_supervised(model)
+    @test package_license(model) == "MIT"
+    @test prediction_type(model) == :probabilistic
+    @test hyperparameters(model) == (:fit_intercept, :link, :offsetcol, :report_keys)
+end
 
 ###
 ### Count regression
 ###
+@testset "Count regression" begin
+    rng = StableRNGs.StableRNG(123)
 
-rng = StableRNGs.StableRNG(123)
+    X = randn(rng, 500, 5)
+    θ = randn(rng, 5)
+    y = map(exp.(X*θ)) do mu
+        rand(rng, Distributions.Poisson(mu))
+    end
+    w = ones(eltype(y), length(y))
 
-X = randn(rng, 500, 5)
-θ = randn(rng, 5)
-y = map(exp.(X*θ)) do mu
-    rand(rng, Distributions.Poisson(mu))
+    XTable = MLJBase.table(X)
+
+    lcr = LinearCountRegressor(fit_intercept=false)
+
+    
+    fitresult, _, _ = fit(lcr, 1, XTable, y)
+    θ̂ = fitted_params(lcr, fitresult).coef
+    @test norm(θ̂ .- θ)/norm(θ) ≤ 0.03
+
+    fitresultw, _, _ = fit(lcr, 1, XTable, y, w)
+    θ̂w = fitted_params(lcr, fitresultw).coef
+    @test norm(θ̂w .- θ)/norm(θ) ≤ 0.03
+    @test θ̂w ≈ θ̂ 
+
+    # Test metadata
+    model = lcr
+    @test name(model) == "LinearCountRegressor"
+    @test package_name(model) == "GLM"
+    @test supports_weights(model)
+    @test is_pure_julia(model)
+    @test is_supervised(model)
+    @test package_license(model) == "MIT"
+    @test prediction_type(model) == :probabilistic
+    hyper_params = hyperparameters(model)
+    @test hyper_params[1] == :fit_intercept
+    @test hyper_params[2] == :distribution
+    @test hyper_params[3] == :link
+    @test hyper_params[4] == :offsetcol
+    @test hyper_params[5] == :report_keys
+
 end
-
-XTable = MLJBase.table(X)
-
-lcr = LinearCountRegressor(fit_intercept=false)
-fitresult, _, _ = fit(lcr, 1, XTable, y)
-
-θ̂ = fitted_params(lcr, fitresult).coef
-
-@test norm(θ̂ .- θ)/norm(θ) ≤ 0.03
-
 
 modeltypes = [LinearRegressor, LinearBinaryClassifier, LinearCountRegressor]
 @testset "Test prepare_inputs" begin
@@ -137,6 +190,8 @@ end
 
 @testset "Test offsetting models" begin
     @testset "Test split_X_offset" begin
+        rng = StableRNGs.StableRNG(123)
+        N = 100
         X = (x1=[1,2,3], x2=[4,5,6])
         @test MLJGLMInterface.split_X_offset(X, nothing) == (X, Float64[])
         @test MLJGLMInterface.split_X_offset(X, :x1) == ((x2=[4,5,6],), [1,2,3])
@@ -228,7 +283,7 @@ end
     _, _, report = fit(lr, 1, X, y)
     @test :deviance in keys(report) 
     @test :stderror in keys(report)
-@test :dof_residual ∉ keys(report)
+    @test :dof_residual ∉ keys(report)
 
     # check that an empty `NamedTuple` is outputed for
     # `report_params === nothing`
