@@ -45,17 +45,22 @@ const LCR_DESCR = "Linear count regressor with specified "*
 # LinearBinaryClassifier --> Probabilistic w Binary target // logit,cauchit,..
 # MulticlassClassifier   --> Probabilistic w Multiclass target
 
+const VALID_KEYS = [:deviance, :dof_residual, :stderror, :vcov, :coef_table]
+const DEFAULT_KEYS = VALID_KEYS # For more understandable warning mssg by `@mlj_model`.
+const KEYS_TYPE = Union{Nothing, AbstractVector{Symbol}}
 
 @mlj_model mutable struct LinearRegressor <: MMI.Probabilistic
     fit_intercept::Bool = true
     dropcollinear::Bool = false
     offsetcol::Union{Symbol, Nothing} = nothing
+    report_keys::KEYS_TYPE = DEFAULT_KEYS::(isnothing(_) || issubset(_, VALID_KEYS))
 end
 
 @mlj_model mutable struct LinearBinaryClassifier <: MMI.Probabilistic
     fit_intercept::Bool = true
     link::GLM.Link01 = GLM.LogitLink()
     offsetcol::Union{Symbol, Nothing} = nothing
+    report_keys::KEYS_TYPE = DEFAULT_KEYS::(isnothing(_) || issubset(_, VALID_KEYS))
 end
 
 @mlj_model mutable struct LinearCountRegressor <: MMI.Probabilistic
@@ -63,6 +68,7 @@ end
     distribution::Distributions.Distribution = Distributions.Poisson()
     link::GLM.Link = GLM.LogLink()
     offsetcol::Union{Symbol, Nothing} = nothing
+    report_keys::KEYS_TYPE = DEFAULT_KEYS::(isnothing(_) || issubset(_, VALID_KEYS))
 end
 
 # Short names for convenience here
@@ -125,27 +131,43 @@ function prepare_inputs(model, X; handle_intercept=false)
 end
 
 """
-    glm_report(glm_model, features)
+    glm_report(glm_model, features, reportkeys)
 
-Report based on the fitted `LinearModel/GeneralizedLinearModel`, `glm_model`.
+Report based on a fitted `LinearModel/GeneralizedLinearModel`, `glm_model` 
+and keyed on `reportkeys`.
 """
-function glm_report(glm_model, features)
-    deviance = GLM.deviance(glm_model)
-    dof_residual = GLM.dof_residual(glm_model)
-    stderror = GLM.stderror(glm_model)
-    vcov = GLM.vcov(glm_model)
-    coef_table = GLM.coeftable(glm_model)
-    # Update the variable names in the `coef_table` with the actual variable
-    # names seen during fit.
-    if length(coef_table.rownms) == length(features)
-        # This means `fit_intercept` is false
-        coef_table.rownms = string.(features)
-    else      
-        coef_table.rownms = [
-            (string(features[i]) for i in eachindex(features))...; "(Intercept)"
-        ]
+glm_report
+
+glm_report(glm_model, features, ::Nothing) = NamedTuple()
+
+function glm_report(glm_model, features, reportkeys)
+    isempty(reportkeys) && return NamedTuple()
+    report_dict = Dict{Symbol, Any}() 
+    if in(:deviance, reportkeys)
+        report_dict[:deviance] = GLM.deviance(glm_model)
     end
-    return (; deviance, dof_residual, stderror, vcov, coef_table)
+    if in(:dof_residual, reportkeys)
+        report_dict[:dof_residual] = GLM.dof_residual(glm_model)
+    end
+    if in(:stderror, reportkeys)
+        report_dict[:stderror] = GLM.stderror(glm_model)
+    end
+    if :vcov in reportkeys
+        report_dict[:vcov] = GLM.vcov(glm_model)
+    end
+    if :coef_table in reportkeys
+        coef_table = GLM.coeftable(glm_model)
+        # Update the variable names in the `coef_table` with the actual variable
+        # names seen during fit.
+        if length(coef_table.rownms) == length(features)
+            # This means `fit_intercept` is false
+            coef_table.rownms = string.(features)
+        else
+            coef_table.rownms = [string.(features); "(Intercept)"]
+        end
+        report_dict[:coef_table] = coef_table
+    end
+    return NamedTuple{Tuple(keys(report_dict))}(values(report_dict))
 end
 
 
@@ -222,9 +244,8 @@ function MMI.fit(model::LinearRegressor, verbosity::Int, X, y)
     fitresult = FitResult(
         GLM.coef(fitted_lm), GLM.dispersion(fitted_lm), (features = features,)
     )
-
     # form the report
-    report = glm_report(fitted_lm, features)
+    report = glm_report(fitted_lm, features, model.report_keys)
     cache = nothing
     # return
     return fitresult, cache, report
@@ -241,7 +262,7 @@ function MMI.fit(model::LinearCountRegressor, verbosity::Int, X, y)
         GLM.coef(fitted_glm), GLM.dispersion(fitted_glm), (features = features,)
     )
     # form the report
-    report = glm_report(fitted_glm, features)
+    report = glm_report(fitted_glm, features, model.report_keys)
     cache = nothing
     # return
     return fitresult, cache, report
@@ -260,7 +281,7 @@ function MMI.fit(model::LinearBinaryClassifier, verbosity::Int, X, y)
         GLM.coef(fitted_glm), GLM.dispersion(fitted_glm), (features = features,)
     )
     # form the report
-    report = glm_report(fitted_glm, features)
+    report = glm_report(fitted_glm, features, model.report_keys)
     cache = nothing
     # return
     return (fitresult, decode), cache, report
