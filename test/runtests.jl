@@ -29,20 +29,17 @@ expit(X) = 1 ./ (1 .+ exp.(-X))
     ytrain = selectrows(y, train)
     wtrain = selectrows(w, train)
     Xtest  = selectrows(X, test)
-
-    # Without weights `w`
+    
     fitresult, _, _ = fit(atom_ols, 1, Xtrain, ytrain)
     θ = MLJBase.fitted_params(atom_ols, fitresult)
 
     p = predict_mean(atom_ols, fitresult, Xtest)
 
-    # With weights `w`
     fitresultw, _, _ = fit(atom_ols, 1, Xtrain, ytrain, wtrain)
     θw = MLJBase.fitted_params(atom_ols, fitresult)
 
     pw = predict_mean(atom_ols, fitresultw, Xtest)
 
-    # hand made regression to compare
     Xa = MLJBase.matrix(X) # convert(Matrix{Float64}, X)
     Xa1 = hcat(Xa, ones(size(Xa, 1)))
     coefs = Xa1[train, :] \ y[train]
@@ -89,7 +86,6 @@ end
     lr = LinearBinaryClassifier()
     pr = LinearBinaryClassifier(link=GLM.ProbitLink())
 
-    # without weights
     fitresult, _, report = fit(lr, 1, X, y)
     yhat = predict(lr, fitresult, X)
     @test mean(cross_entropy(yhat, y)) < 0.25
@@ -97,7 +93,6 @@ end
     yhat1 = predict(pr, fitresult1, X)
     @test mean(cross_entropy(yhat1, y)) < 0.25
 
-    # With weights
     fitresultw, _, reportw = fit(lr, 1, X, y, w)
     yhatw = predict(lr, fitresultw, X)
     @test mean(cross_entropy(yhatw, y)) < 0.25
@@ -138,12 +133,11 @@ end
 
     lcr = LinearCountRegressor(fit_intercept=false)
 
-    # Without weights 
+    
     fitresult, _, _ = fit(lcr, 1, XTable, y)
     θ̂ = fitted_params(lcr, fitresult).coef
     @test norm(θ̂ .- θ)/norm(θ) ≤ 0.03
 
-    # With weights
     fitresultw, _, _ = fit(lcr, 1, XTable, y, w)
     θ̂w = fitted_params(lcr, fitresultw).coef
     @test norm(θ̂w .- θ)/norm(θ) ≤ 0.03
