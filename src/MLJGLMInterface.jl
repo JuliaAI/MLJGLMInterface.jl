@@ -17,7 +17,7 @@ export LinearRegressor, LinearBinaryClassifier, LinearCountRegressor
 import MLJModelInterface
 import MLJModelInterface: metadata_pkg, metadata_model, Table, Continuous, Count, Finite,
     OrderedFactor, Multiclass, @mlj_model
-import Distributions
+import Distributions: Bernoulli, Distribution, Poisson
 using Tables
 import GLM
 using GLM: FormulaTerm
@@ -65,7 +65,7 @@ end
 
 @mlj_model mutable struct LinearCountRegressor <: MMI.Probabilistic
     fit_intercept::Bool = true
-    distribution::Distributions.Distribution = Distributions.Poisson()
+    distribution::Distribution = Poisson()
     link::GLM.Link = GLM.LogLink()
     offsetcol::Union{Symbol, Nothing} = nothing
     report_keys::KEYS_TYPE = DEFAULT_KEYS::(isnothing(_) || issubset(_, VALID_KEYS))
@@ -216,6 +216,30 @@ function glm_features(model, X)
     return table_features
 end
 
+"""
+    check_weights(w, y)
+
+Validate observation weights to be used in fitting `Linear/GeneralizedLinearModel` based 
+on target vector `y`.
+Note: 
+Categorical targets have to be converted into a AbstractVector{<:Real} before 
+passing to this method.
+"""
+check_weights
+
+check_weights(::Nothing, y::AbstractVector{<:Real}) = similar(y, 0)
+
+function check_weights(w, y::AbstractVector{<:Real})
+    w isa AbstractVector{<:Real} || throw(
+        ArgumentError("Expected `weights === nothing` or `weights::AbstractVector{<:Real}")
+    )
+    length(y) == length(w) || throw(
+        ArgumentError("weights passed must have the same length as the target vector.")
+    )
+    return w
+end
+
+
 ####
 #### FIT FUNCTIONS
 ####
@@ -233,14 +257,15 @@ coefs(fr::FitResult) = fr.coefs
 dispersion(fr::FitResult) = fr.dispersion
 params(fr::FitResult) = fr.params
 
-function MMI.fit(model::LinearRegressor, verbosity::Int, X, y)
+function MMI.fit(model::LinearRegressor, verbosity::Int, X, y, w=nothing)
     # apply the model
     Xmatrix, offset = prepare_inputs(model, X)
     features = glm_features(model, X)
     y_ = isempty(offset) ? y : y .- offset
+    wts = check_weights(w, y_)
     data = glm_data(model, Xmatrix, y_, features)
     form = glm_formula(model, features)
-    fitted_lm = GLM.lm(form, data; model.dropcollinear).model
+    fitted_lm = GLM.lm(form, data; model.dropcollinear, wts).model
     fitresult = FitResult(
         GLM.coef(fitted_lm), GLM.dispersion(fitted_lm), (features = features,)
     )
@@ -251,13 +276,14 @@ function MMI.fit(model::LinearRegressor, verbosity::Int, X, y)
     return fitresult, cache, report
 end
 
-function MMI.fit(model::LinearCountRegressor, verbosity::Int, X, y)
+function MMI.fit(model::LinearCountRegressor, verbosity::Int, X, y, w=nothing)
     # apply the model
     Xmatrix, offset = prepare_inputs(model, X)
     features = glm_features(model, X)
     data = glm_data(model, Xmatrix, y, features)
+    wts = check_weights(w, y)
     form = glm_formula(model, features)
-    fitted_glm = GLM.glm(form, data, model.distribution, model.link; offset).model
+    fitted_glm = GLM.glm(form, data, model.distribution, model.link; offset, wts).model
     fitresult = FitResult(
         GLM.coef(fitted_glm), GLM.dispersion(fitted_glm), (features = features,)
     )
@@ -268,15 +294,16 @@ function MMI.fit(model::LinearCountRegressor, verbosity::Int, X, y)
     return fitresult, cache, report
 end
 
-function MMI.fit(model::LinearBinaryClassifier, verbosity::Int, X, y)
+function MMI.fit(model::LinearBinaryClassifier, verbosity::Int, X, y, w=nothing)
     # apply the model
     decode = y[1]
     y_plain = MMI.int(y) .- 1 # 0, 1 of type Int
+    wts = check_weights(w, y_plain)
     Xmatrix, offset = prepare_inputs(model, X)
     features = glm_features(model, X)
     data = glm_data(model, Xmatrix, y_plain, features)
     form = glm_formula(model, features)
-    fitted_glm = GLM.glm(form, data, Distributions.Bernoulli(), model.link; offset).model
+    fitted_glm = GLM.glm(form, data, Bernoulli(), model.link; offset, wts).model
     fitresult = FitResult(
         GLM.coef(fitted_glm), GLM.dispersion(fitted_glm), (features = features,)
     )
@@ -370,7 +397,7 @@ metadata_model(
     LinearRegressor,
     input = Table(Continuous),
     target = AbstractVector{Continuous},
-    weights = false,
+    supports_weights = true,
     descr = LR_DESCR,
     path = "$PKG.LinearRegressor"
 )
@@ -379,7 +406,7 @@ metadata_model(
     LinearBinaryClassifier,
     input = Table(Continuous),
     target = AbstractVector{<:Finite{2}},
-    weights = false,
+    supports_weights = true,
     descr = LBC_DESCR,
     path = "$PKG.LinearBinaryClassifier"
 )
@@ -388,7 +415,7 @@ metadata_model(
     LinearCountRegressor,
     input = Table(Continuous),
     target = AbstractVector{Count},
-    weights = false,
+    supports_weights = true,
     descr = LCR_DESCR,
     path = "$PKG.LinearCountRegressor"
 )
