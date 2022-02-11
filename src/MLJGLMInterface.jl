@@ -17,7 +17,7 @@ export LinearRegressor, LinearBinaryClassifier, LinearCountRegressor
 import MLJModelInterface
 import MLJModelInterface: metadata_pkg, metadata_model, Table, Continuous, Count, Finite,
     OrderedFactor, Multiclass, @mlj_model
-import Distributions: Bernoulli, Distribution, Poisson
+using Distributions: Bernoulli, Distribution, Poisson
 using Tables
 import GLM
 using GLM: FormulaTerm
