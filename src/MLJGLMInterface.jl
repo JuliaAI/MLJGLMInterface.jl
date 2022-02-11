@@ -155,7 +155,7 @@ function glm_report(glm_model, features, reportkeys)
     if in(:vcov, reportkeys)
         report_dict[:vcov] = GLM.vcov(glm_model)
     end
-    if in(:coef_table, reportkeys)
+    if :coef_table in reportkeys
         coef_table = GLM.coeftable(glm_model)
         # Update the variable names in the `coef_table` with the actual variable
         # names seen during fit.
