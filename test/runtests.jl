@@ -7,7 +7,7 @@ using MLJGLMInterface
 using GLM: coeftable
 import GLM
 
-import Distributions
+using  Distributions: Normal, Poisson, Uniform
 import StableRNGs
 using Tables
 
@@ -51,7 +51,7 @@ expit(X) = 1 ./ (1 .+ exp.(-X))
     # test `predict` object
     p_distr = predict(atom_ols, fitresult, selectrows(X, test))
     dispersion =  MLJGLMInterface.dispersion(fitresult)
-    @test p_distr[1] == Distributions.Normal(p[1], dispersion)
+    @test p_distr[1] == Normal(p[1], dispersion)
 
     # test metadata
     model = atom_ols
@@ -102,6 +102,10 @@ end
     @test mean(cross_entropy(yhatw1, y)) < 0.25
     @test yhatw1 ≈ yhat1
 
+    # check predict on `Xnew` with wrong dims
+    Xnew = MLJBase.table(Tables.matrix(X)[:, 1:3], names=Tables.columnnames(X)[1:3])
+    @test_throws DimensionMismatch predict(lr, fitresult, Xnew)
+
     fitted_params(pr, fitresult)
 
     # Test metadata
@@ -113,7 +117,15 @@ end
     @test is_supervised(model)
     @test package_license(model) == "MIT"
     @test prediction_type(model) == :probabilistic
-    @test hyperparameters(model) == (:fit_intercept, :link, :offsetcol, :report_keys)
+    hyper_params = hyperparameters(model)
+    @test hyper_params[1] == :fit_intercept
+    @test hyper_params[2] == :link
+    @test hyper_params[3] == :offsetcol
+    @test hyper_params[4] == :maxiter
+    @test hyper_params[5] == :atol
+    @test hyper_params[6] == :rtol
+    @test hyper_params[7] == :minstepfac
+    @test hyper_params[8] == :report_keys
 end
 
 ###
@@ -125,7 +137,7 @@ end
     X = randn(rng, 500, 5)
     θ = randn(rng, 5)
     y = map(exp.(X*θ)) do mu
-        rand(rng, Distributions.Poisson(mu))
+        rand(rng, Poisson(mu))
     end
     w = ones(eltype(y), length(y))
 
@@ -143,6 +155,12 @@ end
     @test norm(θ̂w .- θ)/norm(θ) ≤ 0.03
     @test θ̂w ≈ θ̂ 
 
+    # check predict on `Xnew` with wrong dims
+    Xnew = MLJBase.table(
+        Tables.matrix(XTable)[:, 1:3], names=Tables.columnnames(XTable)[1:3]
+    )
+    @test_throws DimensionMismatch predict(lcr, fitresult, Xnew)
+
     # Test metadata
     model = lcr
     @test name(model) == "LinearCountRegressor"
@@ -157,32 +175,71 @@ end
     @test hyper_params[2] == :distribution
     @test hyper_params[3] == :link
     @test hyper_params[4] == :offsetcol
-    @test hyper_params[5] == :report_keys
-
+    @test hyper_params[5] == :maxiter
+    @test hyper_params[6] == :atol
+    @test hyper_params[7] == :rtol
+    @test hyper_params[8] == :minstepfac
 end
 
 modeltypes = [LinearRegressor, LinearBinaryClassifier, LinearCountRegressor]
 @testset "Test prepare_inputs" begin
+    @testset "check sample size" for fit_intercept in [true, false]
+        lin_reg = LinearRegressor(;fit_intercept)
+        X_lin_reg = MLJBase.table(rand(3, 3 + fit_intercept))
+        log_reg = LinearBinaryClassifier(;fit_intercept)
+        X_log_reg = MLJBase.table(rand(2, 3 + fit_intercept))
+        lcr = LinearCountRegressor(;distribution=Poisson(), fit_intercept)
+        X_lcr = X_log_reg
+        for (m, X) in [(lin_reg, X_lin_reg), (log_reg, X_log_reg), (lcr, X_lcr)]
+            @test_throws ArgumentError MLJGLMInterface.prepare_inputs(m, X)
+        end
+
+    end
+
     @testset "intercept/offsetcol" for mt in modeltypes
             X = (x1=[1,2,3], x2=[4,5,6])
             m = mt(fit_intercept=true, offsetcol=:x2)
-            Xmatrix, offset = MLJGLMInterface.prepare_inputs(m, X; handle_intercept=true)
-
+            r = MLJGLMInterface.prepare_inputs(m, X; handle_intercept=true)
+            Xmatrix, offset, features = r
             @test offset == [4, 5, 6]
             @test Xmatrix== [1 1;
                              2 1;
                              3 1]
+            @test features == [:x1]
+
+            m1 = mt(fit_intercept=true, offsetcol=:x3)
+            @test_throws ArgumentError MLJGLMInterface.prepare_inputs(m1, X)
     end
 
     @testset "no intercept/no offsetcol" for mt in modeltypes
         X = (x1=[1,2,3], x2=[4,5,6])
         m = mt(fit_intercept=false)
-        Xmatrix, offset = MLJGLMInterface.prepare_inputs(m, X; handle_intercept=true)
-
+        r = MLJGLMInterface.prepare_inputs(m, X; handle_intercept=true)
+        Xmatrix, offset, features = r
         @test offset == []
         @test Xmatrix == [1 4;
                           2 5;
                           3 6]
+        @test features == [:x1, :x2]
+
+        X1 = NamedTuple()
+        @test_throws ArgumentError MLJGLMInterface.prepare_inputs(m, X1)
+    end
+
+    @testset "offsetcol but no intercept" for mt in modeltypes
+        X = (x1=[1,2,3], x2=[4,5,6])
+        m = mt(offsetcol=:x1, fit_intercept=false)
+        Xmatrix, offset, features = MLJGLMInterface.prepare_inputs(m, X)
+
+        @test offset == [1, 2, 3]
+        @test Xmatrix == permutedims([4 5 6])
+        @test features == [:x2]
+
+        # throw error for tables with just one column.
+        # Since for `offsetcol !== nothing` and `fit_intercept == false`
+        # the table must have at least two columns.
+        X1 = (x1=[1,2,3],)
+        @test_throws ArgumentError MLJGLMInterface.prepare_inputs(m, X1)
     end
 
 end
@@ -210,7 +267,7 @@ end
         N = 1000
         rng = StableRNGs.StableRNG(0)
         X = MLJBase.table(rand(rng, N, 3))
-        y = rand(rng, Distributions.Uniform(0,1), N) .< expit(2*X.x1 + X.x2 - X.x3)
+        y = rand(rng, Uniform(0,1), N) .< expit(2*X.x1 + X.x2 - X.x3)
         y = categorical(y)
 
         lr = LinearBinaryClassifier(fit_intercept=false, offsetcol=:x2)
@@ -224,7 +281,7 @@ end
         N = 1000
         rng = StableRNGs.StableRNG(0)
         X = MLJBase.table(rand(rng, N, 3))
-        y = 2*X.x1 + X.x2 - X.x3 + rand(rng, Distributions.Normal(0,1), N) 
+        y = 2*X.x1 + X.x2 - X.x3 + rand(rng, Normal(0,1), N) 
 
         lr = LinearRegressor(fit_intercept=false, offsetcol=:x2)
         fitresult, _, report = fit(lr, 1, X, y)
@@ -237,7 +294,7 @@ end
         rng = StableRNGs.StableRNG(0)
         X = MLJBase.table(rand(rng, N, 3))
         y = map(exp.(2*X.x1 + X.x2 - X.x3)) do mu
-            rand(rng, Distributions.Poisson(mu))
+            rand(rng, Poisson(mu))
         end
 
         lcr = LinearCountRegressor(fit_intercept=false, offsetcol=:x2)
