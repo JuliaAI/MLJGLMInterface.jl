@@ -107,7 +107,7 @@ _to_array(v) = collect(v)
 """
     split_X_offset(X, offsetcol::Nothing)
 
-When no offset is specied, return X, an empty vector.
+When no offset is specified, return `X` and an empty vector.
 """
 split_X_offset(X, offsetcol::Nothing) = (X, Float64[])
 
@@ -150,7 +150,6 @@ function _throw_sample_size_error(model, est_dispersion_param)
         distribution_info = "\b"
     end
 
-    ""
     throw(
         ArgumentError(
             " `$(modelname)` with `fit_intercept = $(model.fit_intercept)`,"*
@@ -160,10 +159,14 @@ function _throw_sample_size_error(model, est_dispersion_param)
     return nothing
 end
 
-# `_requires_info` returns one of the following strings
-# "`n_samples >= n_features`", "`n_samples > n_features`"
-# "`n_samples >= n_features - 1`",  "`n_samples > n_features - 1`"
-# "`n_samples >= n_features + 1`", "`n_samples > n_features + 1`"
+""" 
+    _requires_info(model, est_dispersion_param)
+    
+Returns one of the following strings
+- "`n_samples >= n_features`", "`n_samples > n_features`"
+- "`n_samples >= n_features - 1`",  "`n_samples > n_features - 1`"
+- "`n_samples >= n_features + 1`", "`n_samples > n_features + 1`"
+"""
 function _requires_info(model, est_dispersion_param)
     inequality = est_dispersion_param ? ">" : ">="
     int_num = model.fit_intercept - !isnothing(model.offsetcol)

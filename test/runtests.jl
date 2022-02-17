@@ -184,11 +184,11 @@ end
 modeltypes = [LinearRegressor, LinearBinaryClassifier, LinearCountRegressor]
 @testset "Test prepare_inputs" begin
     @testset "check sample size" for fit_intercept in [true, false]
-        lin_reg = LinearRegressor(;fit_intercept)
+        lin_reg = LinearRegressor(; fit_intercept)
         X_lin_reg = MLJBase.table(rand(3, 3 + fit_intercept))
-        log_reg = LinearBinaryClassifier(;fit_intercept)
+        log_reg = LinearBinaryClassifier(; fit_intercept)
         X_log_reg = MLJBase.table(rand(2, 3 + fit_intercept))
-        lcr = LinearCountRegressor(;distribution=Poisson(), fit_intercept)
+        lcr = LinearCountRegressor(; distribution=Poisson(), fit_intercept)
         X_lcr = X_log_reg
         for (m, X) in [(lin_reg, X_lin_reg), (log_reg, X_log_reg), (lcr, X_lcr)]
             @test_throws ArgumentError MLJGLMInterface.prepare_inputs(m, X)
