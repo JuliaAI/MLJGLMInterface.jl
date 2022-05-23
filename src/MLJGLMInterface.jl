@@ -53,7 +53,7 @@ const LCR_DESCR = "Linear count regressor with specified "*
 
 LinearRegressor TODO: DOCUMENT ME
 
-# Arguments
+# Fields
 
 - `fit_intercept::Bool = true`:
 - `allowrankdeficient::Bool = false`:
@@ -73,7 +73,7 @@ end
 
 LinearBinaryClassifier TODO: DOCUMENT ME
 
-# Arguments
+# Fields
 
 - `fit_intercept::Bool = true`:
 - `allowrankdeficient::Bool = false`:
@@ -94,7 +94,7 @@ end
 
 LinearCountRegressor TODO: DOCUMENT ME
 
-# Arguments
+# Fields
 
 - `fit_intercept::Bool = true`:
 - `distribution::Distribution.Distributions = Distributions.Poisson`:
@@ -425,6 +425,7 @@ TODO: Document me
 - `(fitresult, decode)`:
 - `Xnew`:
 """
+function foo(X, y, z)
 function MMI.predict(model::LinearBinaryClassifier, (fitresult, decode), Xnew)
     π = MMI.predict_mean(model, (fitresult, decode), Xnew)
     return MMI.UnivariateFinite(MMI.classes(decode), π, augment=true)
