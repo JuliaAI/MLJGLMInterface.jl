@@ -46,18 +46,61 @@ const LCR_DESCR = "Linear count regressor with specified "*
 # MulticlassClassifier   --> Probabilistic w Multiclass target
 
 
+"""
+    LinearRegressor(fit_intercept::Bool=true,
+                    allowrankdeficient::Bool=false,
+                    offsetcol::Union{Symbol, Nothing}=nothing)
+
+LinearRegressor TODO: DOCUMENT ME
+
+# Arguments
+
+- `fit_intercept::Bool = true`:
+- `allowrankdeficient::Bool = false`:
+- `offsetcol::Union{Symbol, Nothing} = nothing`:
+
+"""
 @mlj_model mutable struct LinearRegressor <: MMI.Probabilistic
     fit_intercept::Bool = true
     allowrankdeficient::Bool = false
     offsetcol::Union{Symbol, Nothing} = nothing
 end
 
+"""
+    LinearBinaryClassifier(fit_intercept::Bool=true,
+                           allowrankdeficient::Bool=false,
+                           offsetcol::Union{Symbol, Nothing}=nothing)
+
+LinearBinaryClassifier TODO: DOCUMENT ME
+
+# Arguments
+
+- `fit_intercept::Bool = true`:
+- `allowrankdeficient::Bool = false`:
+- `offsetcol::Union{Symbol, Nothing} = nothing`:
+
+"""
 @mlj_model mutable struct LinearBinaryClassifier <: MMI.Probabilistic
     fit_intercept::Bool = true
     link::GLM.Link01 = GLM.LogitLink()
     offsetcol::Union{Symbol, Nothing} = nothing
 end
 
+"""
+    LinearCountRegressor(fit_intercept::Bool = true
+                         distribution::Distributions.Distribution = Distributions.Poisson()
+                         link::GLM.Link = GLM.LogLink()
+                         offsetcol::Union{Symbol, Nothing} = nothing)
+
+LinearCountRegressor TODO: DOCUMENT ME
+
+# Arguments
+
+- `fit_intercept::Bool = true`:
+- `distribution::Distribution.Distributions = Distributions.Poisson`:
+- `offsetcol::Union{Symbol, Nothing} = nothing`:
+
+"""
 @mlj_model mutable struct LinearCountRegressor <: MMI.Probabilistic
     fit_intercept::Bool = true
     distribution::Distributions.Distribution = Distributions.Poisson()
@@ -77,6 +120,11 @@ const GLM_MODELS = Union{
 
 """
 augment_X(X, b)
+"""
+"""
+    augment_X(X::Matrix, b::Bool) -> Matrix
+
+
 Augment the matrix `X` with a column of ones if the intercept is to be
 fitted (`b=true`), return `X` otherwise.
 """
@@ -163,7 +211,7 @@ end
 """
     glm_features(model, X)
 
-Returns an iterable features object, to be used in the construction of 
+Returns an iterable features object, to be used in the construction of
 glm formula and glm data header.
 """
 function glm_features(model, X)
@@ -182,6 +230,18 @@ end
 ####
 
 
+"""
+    MMI.fit(model::LinearRegressor, verbosity::Int, X, y)
+
+TODO: Document me
+
+# Arguments
+
+- `model::LinearRegressor`:
+- `verbosity::Int`:
+- `X`:
+- `y`:
+"""
 function MMI.fit(model::LinearRegressor, verbosity::Int, X, y)
     # apply the model
     Xmatrix, offset = prepare_inputs(model, X)
@@ -199,6 +259,18 @@ function MMI.fit(model::LinearRegressor, verbosity::Int, X, y)
     return fitresult, cache, report
 end
 
+"""
+    MMI.fit(model::LinearCountRegressor, verbosity::Int, X, y)
+
+TODO: Document me
+
+# Arguments
+
+- `model::LinearCountRegressor`:
+- `verbosity::Int`:
+- `X`:
+- `y`:
+"""
 function MMI.fit(model::LinearCountRegressor, verbosity::Int, X, y)
     # apply the model
     Xmatrix, offset = prepare_inputs(model, X)
@@ -216,6 +288,18 @@ function MMI.fit(model::LinearCountRegressor, verbosity::Int, X, y)
     return fitresult, cache, report
 end
 
+"""
+    MMI.fit(model::LinearBinaryClassifier, verbosity::Int, X, y)
+
+TODO: Document me
+
+# Arguments
+
+- `model::LinearBinaryClassifier`:
+- `verbosity::Int`:
+- `X`:
+- `y`:
+"""
 function MMI.fit(model::LinearBinaryClassifier, verbosity::Int, X, y)
     # apply the model
     decode = y[1]
@@ -235,10 +319,21 @@ function MMI.fit(model::LinearBinaryClassifier, verbosity::Int, X, y)
     return (fitresult, decode), cache, report
 end
 
+# TODO: Docs here
 glm_fitresult(::LinearRegressor, fitresult) = fitresult
 glm_fitresult(::LinearCountRegressor, fitresult) = fitresult
 glm_fitresult(::LinearBinaryClassifier, fitresult) = fitresult[1]
 
+"""
+    MMI.fitted_params(model::GLM_MODELS, fitresult)
+
+TODO: Document me
+
+# Arguments
+
+- `model::GLM_MODELS`:
+- `fitresult`:
+"""
 function MMI.fitted_params(model::GLM_MODELS, fitresult)
     result = glm_fitresult(model, fitresult)
     coef = GLM.coef(result)
@@ -253,27 +348,83 @@ end
 ####
 
 # more efficient than MLJBase fallback
+"""
+    MMI.predict_mean(model::Union{LinearRegressor,<:LinearCountRegressor}, fitresult, Xnew)
+
+TODO: Document me
+
+# Arguments
+
+- `model::Union{LinearRegressor,<:LinearCountRegressor}`:
+- `fitresult`:
+- `Xnew`:
+"""
 function MMI.predict_mean(model::Union{LinearRegressor,<:LinearCountRegressor}, fitresult, Xnew)
     Xmatrix, offset = prepare_inputs(model, Xnew; handle_intercept=true)
     return GLM.predict(fitresult, Xmatrix; offset=offset)
 end
 
+"""
+    MMI.predict_mean(model::LinearBinaryClassifier, (fitresult, _), Xnew)
+
+TODO: Document me
+
+# Arguments
+
+- `model::LinearBinaryClassifier`:
+XXX: ????
+- `(fitresult, _)`:
+- `Xnew`:
+"""
 function MMI.predict_mean(model::LinearBinaryClassifier, (fitresult, _), Xnew)
     Xmatrix, offset = prepare_inputs(model, Xnew; handle_intercept=true)
     return GLM.predict(fitresult.model, Xmatrix; offset=offset)
 end
 
+"""
+    MMI.predict(model::LinearRegressor, fitresult, Xnew)
+
+TODO: Document me
+
+# Arguments
+
+- `model::LinearRegressor`:
+- `fitresult`:
+- `Xnew`:
+"""
 function MMI.predict(model::LinearRegressor, fitresult, Xnew)
     μ = MMI.predict_mean(model, fitresult, Xnew)
     σ̂ = GLM.dispersion(fitresult.model)
     return [GLM.Normal(μᵢ, σ̂) for μᵢ ∈ μ]
 end
 
+"""
+    MMI.predict(model::LinearCountRegressor, fitresult, Xnew)
+
+TODO: Document me
+
+# Arguments
+
+- `model::LinearCountRegressor`:
+- `fitresult`:
+- `Xnew`:
+"""
 function MMI.predict(model::LinearCountRegressor, fitresult, Xnew)
     λ = MMI.predict_mean(model, fitresult, Xnew)
     return [GLM.Poisson(λᵢ) for λᵢ ∈ λ]
 end
 
+"""
+    MMI.predict(model::LinearBinaryClassifier, (fitresult, decode), Xnew)
+
+TODO: Document me
+
+# Arguments
+
+- `model::LinearBinaryClassifier`:
+- `(fitresult, decode)`:
+- `Xnew`:
+"""
 function MMI.predict(model::LinearBinaryClassifier, (fitresult, decode), Xnew)
     π = MMI.predict_mean(model, (fitresult, decode), Xnew)
     return MMI.UnivariateFinite(MMI.classes(decode), π, augment=true)
@@ -328,3 +479,5 @@ metadata_model(
 )
 
 end # module
+
+
