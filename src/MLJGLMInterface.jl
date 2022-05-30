@@ -377,6 +377,7 @@ The fields of `report(mach)` are:
 - `dof_residual`: degrees of freedom for residuals, when meaningful
 - `stderror`: standard errors of the coefficients
 - `vcov`: estimated variance-covariance matrix of the coefficient estimates
+
 # Examples
 ```
 using MLJ
