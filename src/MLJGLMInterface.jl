@@ -46,61 +46,18 @@ const LCR_DESCR = "Linear count regressor with specified "*
 # MulticlassClassifier   --> Probabilistic w Multiclass target
 
 
-"""
-    LinearRegressor(fit_intercept::Bool=true,
-                    allowrankdeficient::Bool=false,
-                    offsetcol::Union{Symbol, Nothing}=nothing)
-
-LinearRegressor TODO: DOCUMENT ME
-
-# Fields
-
-- `fit_intercept::Bool = true`:
-- `allowrankdeficient::Bool = false`:
-- `offsetcol::Union{Symbol, Nothing} = nothing`:
-
-"""
 @mlj_model mutable struct LinearRegressor <: MMI.Probabilistic
     fit_intercept::Bool = true
     allowrankdeficient::Bool = false
     offsetcol::Union{Symbol, Nothing} = nothing
 end
 
-"""
-    LinearBinaryClassifier(fit_intercept::Bool=true,
-                           allowrankdeficient::Bool=false,
-                           offsetcol::Union{Symbol, Nothing}=nothing)
-
-LinearBinaryClassifier TODO: DOCUMENT ME
-
-# Fields
-
-- `fit_intercept::Bool = true`:
-- `allowrankdeficient::Bool = false`:
-- `offsetcol::Union{Symbol, Nothing} = nothing`:
-
-"""
 @mlj_model mutable struct LinearBinaryClassifier <: MMI.Probabilistic
     fit_intercept::Bool = true
     link::GLM.Link01 = GLM.LogitLink()
     offsetcol::Union{Symbol, Nothing} = nothing
 end
 
-"""
-    LinearCountRegressor(fit_intercept::Bool = true
-                         distribution::Distributions.Distribution = Distributions.Poisson()
-                         link::GLM.Link = GLM.LogLink()
-                         offsetcol::Union{Symbol, Nothing} = nothing)
-
-LinearCountRegressor TODO: DOCUMENT ME
-
-# Fields
-
-- `fit_intercept::Bool = true`:
-- `distribution::Distribution.Distributions = Distributions.Poisson`:
-- `offsetcol::Union{Symbol, Nothing} = nothing`:
-
-"""
 @mlj_model mutable struct LinearCountRegressor <: MMI.Probabilistic
     fit_intercept::Bool = true
     distribution::Distributions.Distribution = Distributions.Poisson()
@@ -120,11 +77,6 @@ const GLM_MODELS = Union{
 
 """
 augment_X(X, b)
-"""
-"""
-    augment_X(X::Matrix, b::Bool) -> Matrix
-
-
 Augment the matrix `X` with a column of ones if the intercept is to be
 fitted (`b=true`), return `X` otherwise.
 """
@@ -230,18 +182,6 @@ end
 ####
 
 
-"""
-    MMI.fit(model::LinearRegressor, verbosity::Int, X, y)
-
-TODO: Document me
-
-# Arguments
-
-- `model::LinearRegressor`:
-- `verbosity::Int`:
-- `X`:
-- `y`:
-"""
 function MMI.fit(model::LinearRegressor, verbosity::Int, X, y)
     # apply the model
     Xmatrix, offset = prepare_inputs(model, X)
@@ -259,18 +199,6 @@ function MMI.fit(model::LinearRegressor, verbosity::Int, X, y)
     return fitresult, cache, report
 end
 
-"""
-    MMI.fit(model::LinearCountRegressor, verbosity::Int, X, y)
-
-TODO: Document me
-
-# Arguments
-
-- `model::LinearCountRegressor`:
-- `verbosity::Int`:
-- `X`:
-- `y`:
-"""
 function MMI.fit(model::LinearCountRegressor, verbosity::Int, X, y)
     # apply the model
     Xmatrix, offset = prepare_inputs(model, X)
@@ -288,18 +216,6 @@ function MMI.fit(model::LinearCountRegressor, verbosity::Int, X, y)
     return fitresult, cache, report
 end
 
-"""
-    MMI.fit(model::LinearBinaryClassifier, verbosity::Int, X, y)
-
-TODO: Document me
-
-# Arguments
-
-- `model::LinearBinaryClassifier`:
-- `verbosity::Int`:
-- `X`:
-- `y`:
-"""
 function MMI.fit(model::LinearBinaryClassifier, verbosity::Int, X, y)
     # apply the model
     decode = y[1]
@@ -319,21 +235,10 @@ function MMI.fit(model::LinearBinaryClassifier, verbosity::Int, X, y)
     return (fitresult, decode), cache, report
 end
 
-# TODO: Docs here
 glm_fitresult(::LinearRegressor, fitresult) = fitresult
 glm_fitresult(::LinearCountRegressor, fitresult) = fitresult
 glm_fitresult(::LinearBinaryClassifier, fitresult) = fitresult[1]
 
-"""
-    MMI.fitted_params(model::GLM_MODELS, fitresult)
-
-TODO: Document me
-
-# Arguments
-
-- `model::GLM_MODELS`:
-- `fitresult`:
-"""
 function MMI.fitted_params(model::GLM_MODELS, fitresult)
     result = glm_fitresult(model, fitresult)
     coef = GLM.coef(result)
@@ -348,84 +253,27 @@ end
 ####
 
 # more efficient than MLJBase fallback
-"""
-    MMI.predict_mean(model::Union{LinearRegressor,<:LinearCountRegressor}, fitresult, Xnew)
-
-TODO: Document me
-
-# Arguments
-
-- `model::Union{LinearRegressor,<:LinearCountRegressor}`:
-- `fitresult`:
-- `Xnew`:
-"""
 function MMI.predict_mean(model::Union{LinearRegressor,<:LinearCountRegressor}, fitresult, Xnew)
     Xmatrix, offset = prepare_inputs(model, Xnew; handle_intercept=true)
     return GLM.predict(fitresult, Xmatrix; offset=offset)
 end
 
-"""
-    MMI.predict_mean(model::LinearBinaryClassifier, (fitresult, _), Xnew)
-
-TODO: Document me
-
-# Arguments
-
-- `model::LinearBinaryClassifier`:
-XXX: ????
-- `(fitresult, _)`:
-- `Xnew`:
-"""
 function MMI.predict_mean(model::LinearBinaryClassifier, (fitresult, _), Xnew)
     Xmatrix, offset = prepare_inputs(model, Xnew; handle_intercept=true)
     return GLM.predict(fitresult.model, Xmatrix; offset=offset)
 end
 
-"""
-    MMI.predict(model::LinearRegressor, fitresult, Xnew)
-
-TODO: Document me
-
-# Arguments
-
-- `model::LinearRegressor`:
-- `fitresult`:
-- `Xnew`:
-"""
 function MMI.predict(model::LinearRegressor, fitresult, Xnew)
     μ = MMI.predict_mean(model, fitresult, Xnew)
     σ̂ = GLM.dispersion(fitresult.model)
     return [GLM.Normal(μᵢ, σ̂) for μᵢ ∈ μ]
 end
 
-"""
-    MMI.predict(model::LinearCountRegressor, fitresult, Xnew)
-
-TODO: Document me
-
-# Arguments
-
-- `model::LinearCountRegressor`:
-- `fitresult`:
-- `Xnew`:
-"""
 function MMI.predict(model::LinearCountRegressor, fitresult, Xnew)
     λ = MMI.predict_mean(model, fitresult, Xnew)
     return [GLM.Poisson(λᵢ) for λᵢ ∈ λ]
 end
 
-"""
-    MMI.predict(model::LinearBinaryClassifier, (fitresult, decode), Xnew)
-
-TODO: Document me
-
-# Arguments
-
-- `model::LinearBinaryClassifier`:
-- `(fitresult, decode)`:
-- `Xnew`:
-"""
-function foo(X, y, z)
 function MMI.predict(model::LinearBinaryClassifier, (fitresult, decode), Xnew)
     π = MMI.predict_mean(model, (fitresult, decode), Xnew)
     return MMI.UnivariateFinite(MMI.classes(decode), π, augment=true)
@@ -479,6 +327,78 @@ metadata_model(
     path = "$PKG.LinearCountRegressor"
 )
 
+const DOC_LINEAR_REGRESSION = "TODO"
+"""
+$(MMI.doc_header(LinearRegressor))
+`LinearRegressor` implements the $DOC_LINEAR_REGRESSION.
+
+# Training data
+
+In MLJ or MLJBase, bind an instance `model` to data with
+    mach = machine(model, X, y)
+
+Where
+
+- `X`: any table of input features (eg, a `DataFrame`) whose columns
+  each have one of the following element scitypes: `Continuous`,
+  `Count`, or `<:OrderedFactor`; check column scitypes with `schema(X)`
+
+- `y`: is the target, which can be any `AbstractVector` whose element
+  scitype is `Continuous`; check the scitype with `scitype(y)`
+
+# Hyper-parameters
+
+- `fit_intercept=true`: Whether to calculate the intercept for this model.
+   If set to false, no intercept will be calculated (e.g. the data is expected
+   to be centered)
+- `allowrankdeficient=false`: Whether to allow rank deficient matrices (e.g.
+   more columns than rows)
+- `offsetcol=nothing`: Name of the column to be used as an offset, if any.
+   An offset is a variable which is known to have a coefficient of 1.
+# Operations
+
+- `predict(mach, Xnew)`: return predictions of the target given new
+   features `Xnew` having the same Scitype as `X` above. Predictions are
+   probabilistic but uncalibrated.
+- `predict_mean(mach, Xnew)`: instead return the mean of
+   each prediction above
+# Fitted parameters
+The fields of `fitted_params(mach)` are:
+
+- `featues`: The names of the features used during model fitting
+- `coef`: The linear coefficients determined by the model
+- `intercept`: The intercept determined by the model
+# Report
+The fields of `report(mach)` are:
+
+- `deviance`: Measure of deviance of fitted model with respect to
+   a perfectly fitted model. For a linear model, this is the weighted
+   residual sum of squares
+- `dof_residual`: degrees of freedom for residuals, when meaningful
+- `stderror`: standard errors of the coefficients
+- `vcov`: estimated variance-covariance matrix of the coefficient estimates
+# Examples
+```
+using MLJ
+GLM = @load LinearRegressor pkg=GLM
+glm = GLM()
+
+X, y = make_regression(100, 2) # synthetic data
+mach = machine(glm, X, y) |> fit!
+
+Xnew, _ = make_regression(3, 2)
+yhat = predict(mach, Xnew) # new predictions
+yhat_point = predict_mean(mach, Xnew) # new predictions
+
+fitted_params(mach).features
+fitted_params(mach).coef # x1, x2, intercept
+fitted_params(mach).intercept
+
+report(mach)
+```
+See also
+TODO: ADD REFERENCES
+"""
+LinearRegressor
+
 end # module
-
-
