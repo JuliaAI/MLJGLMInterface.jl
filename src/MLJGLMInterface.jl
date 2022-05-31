@@ -355,6 +355,7 @@ Where
    more columns than rows)
 - `offsetcol=nothing`: Name of the column to be used as an offset, if any.
    An offset is a variable which is known to have a coefficient of 1.
+
 # Operations
 
 - `predict(mach, Xnew)`: return predictions of the target given new
