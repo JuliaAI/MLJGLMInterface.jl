@@ -432,7 +432,7 @@ Where
   `Count`, or `<:OrderedFactor`; check column scitypes with `schema(X)`
 
 - `y`: is the target, which can be any `AbstractVector` whose element
-  scitype is `<:Multiclass(2)`; check the scitype
+  scitype is `<:OrderedFactor(2)` or `<:Multiclass(2)`; check the scitype
   with `scitype(y)`
 
 # Hyper-parameters
@@ -465,8 +465,8 @@ The fields of `fitted_params(mach)` are:
 The fields of `report(mach)` are:
 
 - `deviance`: Measure of deviance of fitted model with respect to
-   a perfectly fitted model. For a linear model, this is the weighted
-   residual sum of squares
+  a perfectly fitted model. For a linear model, this is the weighted
+  residual sum of squares
 - `dof_residual`: degrees of freedom for residuals, when meaningful
 - `stderror`: standard errors of the coefficients
 - `vcov`: estimated variance-covariance matrix of the coefficient estimates
