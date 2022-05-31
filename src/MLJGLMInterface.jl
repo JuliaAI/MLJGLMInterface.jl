@@ -363,6 +363,7 @@ Where
    probabilistic but uncalibrated.
 - `predict_mean(mach, Xnew)`: instead return the mean of
    each prediction above
+
 # Fitted parameters
 The fields of `fitted_params(mach)` are:
 
