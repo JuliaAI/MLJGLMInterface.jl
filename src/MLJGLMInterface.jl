@@ -343,6 +343,7 @@ Options exist to specify an intercept or offset feature.
 # Training data
 
 In MLJ or MLJBase, bind an instance `model` to data with
+
     mach = machine(model, X, y)
 
 Where
