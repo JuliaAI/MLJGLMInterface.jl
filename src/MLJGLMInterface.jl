@@ -328,6 +328,8 @@ metadata_model(
 )
 
 const DOC_LINEAR_REGRESSION = "TODO"
+const DOC_LINEAR_BINARY_REGRESSION = "TODO"
+const DOC_LINEAR_COUNT_REGRESSION = "TODO"
 """
 $(MMI.doc_header(LinearRegressor))
 `LinearRegressor` implements the $DOC_LINEAR_REGRESSION.
@@ -360,7 +362,7 @@ Where
 
 - `predict(mach, Xnew)`: return predictions of the target given new
    features `Xnew` having the same Scitype as `X` above. Predictions are
-   probabilistic but uncalibrated.
+   probabilistic.
 - `predict_mean(mach, Xnew)`: instead return the mean of
    each prediction above
 
@@ -404,5 +406,161 @@ See also
 TODO: ADD REFERENCES
 """
 LinearRegressor
+
+"""
+$(MMI.doc_header(LinearBinaryClassifier))
+`LinearBinaryClassifier` implements the $DOC_LINEAR_BINARY_REGRESSION.
+
+# Training data
+
+In MLJ or MLJBase, bind an instance `model` to data with
+    mach = machine(model, X, y)
+
+Where
+
+- `X`: any table of input features (eg, a `DataFrame`) whose columns
+  each have one of the following element scitypes: `Continuous`,
+  `Count`, or `<:OrderedFactor`; check column scitypes with `schema(X)`
+
+- `y`: is the target, which can be any `AbstractVector` whose element
+  scitype is `<:OrderedFactor` or `<:Multiclass`; check the scitype
+  with `scitype(y)`
+
+# Hyper-parameters
+
+- `fit_intercept=true`: Whether to calculate the intercept for this model.
+   If set to false, no intercept will be calculated (e.g. the data is expected
+   to be centered)
+- `link = GLM.LogitLink`: The function which links the linear prediction function
+   to the probability of a particular outcome or class.
+- `offsetcol=nothing`: Name of the column to be used as an offset, if any.
+   An offset is a variable which is known to have a coefficient of 1.
+
+# Operations
+
+- `predict(mach, Xnew)`: return predictions of the target given
+  features `Xnew` having the same scitype as `X` above. Predictions
+  are probabilistic.
+- `predict_mean(mach, Xnew)`: return predictions of the target given
+   features `Xnew`. Predictions represent probaility of being the
+   "positive" (second) class.
+
+# Fitted parameters
+The fields of `fitted_params(mach)` are:
+
+- `features`: The names of the features used during model fitting
+- `coef`: The linear coefficients determined by the model
+- `intercept`: The intercept determined by the model
+
+# Report
+The fields of `report(mach)` are:
+
+- `deviance`: Measure of deviance of fitted model with respect to
+   a perfectly fitted model. For a linear model, this is the weighted
+   residual sum of squares
+- `dof_residual`: degrees of freedom for residuals, when meaningful
+- `stderror`: standard errors of the coefficients
+- `vcov`: estimated variance-covariance matrix of the coefficient estimates
+
+# Examples
+
+```
+using MLJ
+using CategoricalArrays
+using ScientificTypes
+CLF = @load LinearBinaryClassifier pkg=GLM
+clf = CLF(fit_intercept=false)
+
+X, y = @load_iris
+
+# needs binary classification
+idx = findall( x -> string(x) != "setosa", y)
+y = y[idx]
+scitype(y)
+droplevels!(y) # drop unused levels
+scitype(y) # need multiclass 2
+X = map( x -> x[idx], X)
+mach = machine(clf, X, y) |> fit!
+
+Xnew = (sepal_length = [6.4, 7.2, 7.4],
+        sepal_width = [2.8, 3.0, 2.8],
+        petal_length = [5.6, 5.8, 6.1],
+        petal_width = [2.1, 1.6, 1.9],)
+
+yhat = predict(mach, Xnew) # probabilistic predictions
+pdf(yhat, levels(y)) # probability matrix
+p_virginica = pdf.(yhat, "virginica")
+p_positive_class = predict_mean(mach, Xnew) # probability of "positive" class
+p_virginica == p_positive_class
+
+
+fitted_params(mach).features
+fitted_params(mach).coef # x1, x2, intercept
+fitted_params(mach).intercept
+
+report(mach)
+```
+See also
+TODO: ADD REFERENCES
+"""
+LinearBinaryClassifier
+
+"""
+$(MMI.doc_header(LinearCountRegressor))
+`LinearCountRegressor` implements the $DOC_LINEAR_COUNT_REGRESSION.
+
+# Training data
+
+In MLJ or MLJBase, bind an instance `model` to data with
+    mach = machine(model, X, y)
+
+Where
+
+- `X`: any table of input features (eg, a `DataFrame`) whose columns
+  each have one of the following element scitypes: `Continuous`,
+  `Count`, or `<:OrderedFactor`; check column scitypes with `schema(X)`
+
+- `y`: is the target, which can be any `AbstractVector` whose element
+  scitype is `Continuous`; check the scitype with `scitype(y)`
+
+# Hyper-parameters
+
+- `fit_intercept=true`: Whether to calculate the intercept for this model.
+   If set to false, no intercept will be calculated (e.g. the data is expected
+   to be centered)
+- `distribution=Distributions.Poisson()`: The distribution which the residuals/
+   errors of the model should fit.
+- `link=GLM.LogLink()`: The function which links the linear prediction function
+   to the probability of a particular outcome or class.
+- `offsetcol=nothing`: Name of the column to be used as an offset, if any.
+   An offset is a variable which is known to have a coefficient of 1.
+
+# Operations
+
+- `predict(mach, Xnew)`:
+- `predict_mean(mach, Xnew)`:
+
+# Fitted parameters
+The fields of `fitted_params(mach)` are:
+
+# Report
+The fields of `report(mach)` are:
+
+# Examples
+
+```
+using DataFrames, CategoricalArrays, MLJ
+
+
+GLM = @load LinearCountRegressor pkg=GLM
+glm = GLM()
+
+# XXX: Start here!
+
+```
+See also
+TODO: ADD REFERENCES
+"""
+LinearCountRegressor
 
 end # module
