@@ -432,7 +432,7 @@ Where
   `Count`, or `<:OrderedFactor`; check column scitypes with `schema(X)`
 
 - `y`: is the target, which can be any `AbstractVector` whose element
-  scitype is `<:OrderedFactor` or `<:Multiclass`; check the scitype
+  scitype is `<:Multiclass(2)`; check the scitype
   with `scitype(y)`
 
 # Hyper-parameters
@@ -451,8 +451,8 @@ Where
   features `Xnew` having the same scitype as `X` above. Predictions
   are probabilistic.
 - `predict_mean(mach, Xnew)`: return predictions of the target given
-   features `Xnew`. Predictions represent probaility of being the
-   "positive" (second) class.
+  features `Xnew`. Predictions represent probaility of being the
+  "positive" (second) class.
 
 # Fitted parameters
 The fields of `fitted_params(mach)` are:
