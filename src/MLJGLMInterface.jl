@@ -368,6 +368,7 @@ The fields of `fitted_params(mach)` are:
 - `featues`: The names of the features used during model fitting
 - `coef`: The linear coefficients determined by the model
 - `intercept`: The intercept determined by the model
+
 # Report
 The fields of `report(mach)` are:
 
