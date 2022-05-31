@@ -349,7 +349,7 @@ In MLJ or MLJBase, bind an instance `model` to data with
 Where
 
 - `X`: any table of input features (eg, a `DataFrame`) whose columns
-  are of scitype `Continuous`.
+  are of scitype `Continuous`; check the scitype with `scitype(X)`
 
 - `y`: is the target, which can be any `AbstractVector` whose element
   scitype is `Continuous`; check the scitype with `scitype(y)`
@@ -529,10 +529,10 @@ In MLJ or MLJBase, bind an instance `model` to data with
 Where
 
 - `X`: any table of input features (eg, a `DataFrame`) whose columns
-  are of scitype `Continuous`.
+  are of scitype `Continuous`; check the scitype with `scitype(X)`
 
 - `y`: is the target, which can be any `AbstractVector` whose element
-  scitype is `Continuous`; check the scitype with `scitype(y)`
+  scitype is `Count`; check the scitype with `scitype(y)`
 
 # Hyper-parameters
 
