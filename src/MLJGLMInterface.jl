@@ -330,9 +330,15 @@ metadata_model(
 const DOC_LINEAR_REGRESSION = "TODO"
 const DOC_LINEAR_BINARY_REGRESSION = "TODO"
 const DOC_LINEAR_COUNT_REGRESSION = "TODO"
+#
 """
 $(MMI.doc_header(LinearRegressor))
-`LinearRegressor` implements the $DOC_LINEAR_REGRESSION.
+
+
+`LinearRegressor` assumes the target is a continuous variable
+whose marginal distribution is normal with constant variance, and whose
+expected value is a linear combination of the features (identity link function).
+Options exist to specify an intercept or offset feature.
 
 # Training data
 
@@ -409,7 +415,10 @@ LinearRegressor
 
 """
 $(MMI.doc_header(LinearBinaryClassifier))
-`LinearBinaryClassifier` implements the $DOC_LINEAR_BINARY_REGRESSION.
+`LinearBinaryClassifier` is a generalized linear model, specialised
+to the case of a binary target variable, with a user-
+specified link function. Options exist to specify an intercept or offset feature.
+
 
 # Training data
 
@@ -507,7 +516,10 @@ LinearBinaryClassifier
 
 """
 $(MMI.doc_header(LinearCountRegressor))
-`LinearCountRegressor` implements the $DOC_LINEAR_COUNT_REGRESSION.
+`LinearCountRegressor` is a generalized linear model, specialised
+to the case of a Count target variable whose marginal distribution
+is Poisson, with canonical log link function. Options exist to
+specify an intercept or offset feature.
 
 # Training data
 
