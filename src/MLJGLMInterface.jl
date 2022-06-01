@@ -90,13 +90,17 @@ const GLM_MODELS = Union{
 ###
 
 """
-augment_X(X, b)
-Augment the matrix `X` with a column of ones if the intercept is to be
-fitted (`b=true`), return `X` otherwise.
+    augment_X(X::AbstractMatrix, b::Bool)
+
+Augment the matrix `X` with a column of ones if the intercept should
+be fitted (`b==true`) and return `X` otherwise.
 """
-function augment_X(X::Matrix, b::Bool)::Matrix
-    b && return hcat(X, ones(float(Int), size(X, 1), 1))
-    return X
+function augment_X(X::AbstractMatrix, b::Bool)
+    if b
+        return hcat(X, ones(float(Int), size(X, 1), 1))
+    else
+        return X
+    end
 end
 
 _to_vector(v::Vector) = v
