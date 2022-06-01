@@ -448,9 +448,8 @@ Where
 - `predict(mach, Xnew)`: return predictions of the target given
   features `Xnew` having the same scitype as `X` above. Predictions
   are probabilistic.
-- `predict_mean(mach, Xnew)`: return predictions of the target given
-  features `Xnew`. Predictions represent probaility of being the
-  "positive" (second) class.
+- `predict_mode(mach, Xnew)`: return the modes of the probabilistic predictions
+   returned above.
 
 # Fitted parameters
 
