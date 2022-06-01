@@ -347,7 +347,7 @@ Where
   are of scitype `Continuous`; check the scitype with `schema(X)`
 
 - `y`: is the target, which can be any `AbstractVector` whose element
-  scitype is `Continuous`; check the scitype with `scitype(y)`
+  scitype is `Continuous`; check the scitype with `schema(y)`
 
 # Hyper-parameters
 
@@ -408,7 +408,6 @@ report(mach)
 ```
 
 See also
-
 [`LinearCountRegressor`](@ref), [`LinearBinaryClassifier`](@ref)
 """
 LinearRegressor
@@ -434,7 +433,7 @@ Where
 
 - `y`: is the target, which can be any `AbstractVector` whose element
   scitype is `<:OrderedFactor(2)` or `<:Multiclass(2)`; check the scitype
-  with `scitype(y)`
+  with `schema(y)`
 
 # Hyper-parameters
 
@@ -488,9 +487,9 @@ X, y = @load_iris
 # needs binary classification
 idx = findall( x -> string(x) != "setosa", y)
 y = y[idx]
-scitype(y)
+schema(y)
 droplevels!(y) # drop unused levels
-scitype(y) # need multiclass 2
+schema(y) # need multiclass 2
 X = map( x -> x[idx], X)
 mach = machine(clf, X, y) |> fit!
 
@@ -514,7 +513,6 @@ report(mach)
 ```
 
 See also
-
 [`LinearRegressor`](@ref), [`LinearCountRegressor`](@ref)
 """
 LinearBinaryClassifier
@@ -535,10 +533,10 @@ In MLJ or MLJBase, bind an instance `model` to data with
 Where
 
 - `X`: any table of input features (eg, a `DataFrame`) whose columns
-  are of scitype `Continuous`; check the scitype with `scitype(X)`
+  are of scitype `Continuous`; check the scitype with `schema(X)`
 
 - `y`: is the target, which can be any `AbstractVector` whose element
-  scitype is `Count`; check the scitype with `scitype(y)`
+  scitype is `Count`; check the scitype with `schema(y)`
 
 # Hyper-parameters
 
@@ -618,8 +616,7 @@ julia> fitted_params(mach).coef
 report(mach)
 ```
 
-See also:
-
+See also
 [`LinearRegressor`](@ref), [`LinearBinaryClassifier`](@ref)
 """
 LinearCountRegressor
