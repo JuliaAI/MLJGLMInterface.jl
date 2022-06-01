@@ -11,9 +11,7 @@ using  Distributions: Normal, Poisson, Uniform
 import StableRNGs
 using Tables
 
-
 expit(X) = 1 ./ (1 .+ exp.(-X))
-
 ###
 ### OLSREGRESSOR
 ###
@@ -347,4 +345,15 @@ end
     lr = LinearBinaryClassifier(report_keys=nothing)
     _, _, report = fit(lr, 1, X, y)
     @test report === NamedTuple()
+end
+
+@testset "Issue 27" begin
+    @inferred MLJGLMInterface.augment_X(rand(2, 2), false)
+    n, p = (100, 2)
+    Xmat = rand(p, n)' # note using adjoint
+    X = MLJBase.table(Xmat)
+    y = rand(n)
+    lr = LinearRegressor()
+    # Smoke test whether it crashes on an LinearAlgebra.Adjoint.
+    fit(lr, 1, X, y)
 end
