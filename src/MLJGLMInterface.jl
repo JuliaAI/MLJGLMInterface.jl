@@ -428,9 +428,7 @@ In MLJ or MLJBase, bind an instance `model` to data with
 Where
 
 - `X`: any table of input features (eg, a `DataFrame`) whose columns
-  each have one of the following element scitypes: `Continuous`,
-  `Count`, or `<:OrderedFactor`; check column scitypes with `schema(X)`
-
+  are of scitype `Continuous`; check the scitype with `schema(X)`
 - `y`: is the target, which can be any `AbstractVector` whose element
   scitype is `<:OrderedFactor(2)` or `<:Multiclass(2)`; check the scitype
   with `schema(y)`
