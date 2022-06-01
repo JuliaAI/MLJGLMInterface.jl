@@ -327,15 +327,10 @@ metadata_model(
     path = "$PKG.LinearCountRegressor"
 )
 
-const DOC_LINEAR_REGRESSION = "TODO"
-const DOC_LINEAR_BINARY_REGRESSION = "TODO"
-const DOC_LINEAR_COUNT_REGRESSION = "TODO"
-#
 """
 $(MMI.doc_header(LinearRegressor))
 
-
-`LinearRegressor` assumes the target is a continuous variable
+[`LinearRegressor`](https://en.wikipedia.org/wiki/Linear_regression) assumes the target is a continuous variable
 whose conditional distribution is normal with constant variance, and whose
 expected value is a linear combination of the features (identity link function).
 Options exist to specify an intercept or offset feature.
@@ -373,6 +368,7 @@ Where
    each prediction above
 
 # Fitted parameters
+
 The fields of `fitted_params(mach)` are:
 
 - `features`: The names of the features used during model fitting
@@ -380,6 +376,7 @@ The fields of `fitted_params(mach)` are:
 - `intercept`: The intercept determined by the model
 
 # Report
+
 The fields of `report(mach)` are:
 
 - `deviance`: Measure of deviance of fitted model with respect to
@@ -390,6 +387,7 @@ The fields of `report(mach)` are:
 - `vcov`: estimated variance-covariance matrix of the coefficient estimates
 
 # Examples
+
 ```
 using MLJ
 GLM = @load LinearRegressor pkg=GLM
@@ -408,14 +406,17 @@ fitted_params(mach).intercept
 
 report(mach)
 ```
+
 See also
-TODO: ADD REFERENCES
+
+[`LinearCountRegressor`](@ref), [`LinearBinaryClassifier`](@ref)
 """
 LinearRegressor
 
 """
 $(MMI.doc_header(LinearBinaryClassifier))
-`LinearBinaryClassifier` is a generalized linear model, specialised
+
+`LinearBinaryClassifier` is a [generalized linear model](https://en.wikipedia.org/wiki/Generalized_linear_model#Variance_function), specialised
 to the case of a binary target variable, with a user-
 specified link function. Options exist to specify an intercept or offset feature.
 
@@ -455,6 +456,7 @@ Where
   "positive" (second) class.
 
 # Fitted parameters
+
 The fields of `fitted_params(mach)` are:
 
 - `features`: The names of the features used during model fitting
@@ -462,6 +464,7 @@ The fields of `fitted_params(mach)` are:
 - `intercept`: The intercept determined by the model
 
 # Report
+
 The fields of `report(mach)` are:
 
 - `deviance`: Measure of deviance of fitted model with respect to
@@ -509,14 +512,17 @@ fitted_params(mach).intercept
 
 report(mach)
 ```
+
 See also
-TODO: ADD REFERENCES
+
+[`LinearRegressor`](@ref), [`LinearCountRegressor`](@ref)
 """
 LinearBinaryClassifier
 
 """
 $(MMI.doc_header(LinearCountRegressor))
-`LinearCountRegressor` is a generalized linear model, specialised
+
+`LinearCountRegressor` is a [generalized linear model](https://en.wikipedia.org/wiki/Generalized_linear_model#Variance_function), specialised
 to the case of a Count target variable whose conditional distribution
 is Poisson, with canonical log link function. Options exist to
 specify an intercept or offset feature.
@@ -548,14 +554,31 @@ Where
 
 # Operations
 
-- `predict(mach, Xnew)`:
-- `predict_mean(mach, Xnew)`:
+- `predict(mach, Xnew)`: return predictions of the target given new
+   features `Xnew` having the same Scitype as `X` above. Predictions are
+   probabilistic.
+- `predict_mean(mach, Xnew)`: instead return the mean of
+   each prediction above
 
 # Fitted parameters
+
 The fields of `fitted_params(mach)` are:
 
+- `features`: The names of the features used during model fitting
+- `coef`: The linear coefficients determined by the model
+- `intercept`: The intercept determined by the model
+
 # Report
+
 The fields of `report(mach)` are:
+
+- `deviance`: Measure of deviance of fitted model with respect to
+  a perfectly fitted model. For a linear model, this is the weighted
+  residual sum of squares
+- `dof_residual`: degrees of freedom for residuals, when meaningful
+- `stderror`: standard errors of the coefficients
+- `vcov`: estimated variance-covariance matrix of the coefficient estimates
+
 
 # Examples
 
@@ -580,6 +603,11 @@ model = CountRegressor(fit_intercept=false)
 mach = machine(model, X, y)
 fit!(mach)
 
+Xnew = MLJ.table(rand(3, 3))
+yhat = predict(mach, Xnew)
+yhat_point = predict_mean(mach, Xnew)
+
+
 # get coefficients approximating `w`:
 julia> fitted_params(mach).coef
 3-element Vector{Float64}:
@@ -587,9 +615,12 @@ julia> fitted_params(mach).coef
  -2.0255901752504775
   3.014407534033522
 
+report(mach)
 ```
-See also
-TODO: ADD REFERENCES
+
+See also:
+
+[`LinearRegressor`](@ref), [`LinearBinaryClassifier`](@ref)
 """
 LinearCountRegressor
 
