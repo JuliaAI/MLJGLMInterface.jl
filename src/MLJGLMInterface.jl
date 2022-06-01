@@ -344,7 +344,7 @@ In MLJ or MLJBase, bind an instance `model` to data with
 Where
 
 - `X`: any table of input features (eg, a `DataFrame`) whose columns
-  are of scitype `Continuous`; check the scitype with `scitype(X)`
+  are of scitype `Continuous`; check the scitype with `schema(X)`
 
 - `y`: is the target, which can be any `AbstractVector` whose element
   scitype is `Continuous`; check the scitype with `scitype(y)`
