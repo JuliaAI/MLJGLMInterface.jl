@@ -560,13 +560,32 @@ The fields of `report(mach)` are:
 # Examples
 
 ```
-using DataFrames, CategoricalArrays, MLJ
+using MLJ
+import MLJ.Distributions.Poisson
 
+# Generate some data whose target y looks Poisson when conditioned on
+# X::
+N = 10_000
+w = [1.0, -2.0, 3.0]
+mu(x) = exp(w'x) # mean for a log link function
+Xmat = rand(N, 3)
+X = MLJ.table(Xmat)
+y = map(1:N) do i
+    x = Xmat[i, :]
+    rand(Poisson(mu(x)))
+end;
 
-GLM = @load LinearCountRegressor pkg=GLM
-glm = GLM()
+CountRegressor = @load LinearCountRegressor pkg=GLM
+model = CountRegressor(fit_intercept=false)
+mach = machine(model, X, y)
+fit!(mach)
 
-# XXX: Start here!
+# get coefficients approximating `w`:
+julia> fitted_params(mach).coef
+3-element Vector{Float64}:
+  0.9969008753103842
+ -2.0255901752504775
+  3.014407534033522
 
 ```
 See also
