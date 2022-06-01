@@ -336,7 +336,7 @@ $(MMI.doc_header(LinearRegressor))
 
 
 `LinearRegressor` assumes the target is a continuous variable
-whose marginal distribution is normal with constant variance, and whose
+whose conditional distribution is normal with constant variance, and whose
 expected value is a linear combination of the features (identity link function).
 Options exist to specify an intercept or offset feature.
 
@@ -517,7 +517,7 @@ LinearBinaryClassifier
 """
 $(MMI.doc_header(LinearCountRegressor))
 `LinearCountRegressor` is a generalized linear model, specialised
-to the case of a Count target variable whose marginal distribution
+to the case of a Count target variable whose conditional distribution
 is Poisson, with canonical log link function. Options exist to
 specify an intercept or offset feature.
 
