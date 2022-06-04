@@ -478,7 +478,7 @@ using CategoricalArrays
 using ScientificTypes
 import GLM
 CLF = @load LinearBinaryClassifier pkg=GLM
-clf = CLF(fit_intercept=false)
+clf = CLF(fit_intercept=false, link=GLM.ProbitLink())
 
 X, y = @load_iris
 
