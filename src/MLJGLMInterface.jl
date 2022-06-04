@@ -587,7 +587,7 @@ using MLJ
 import MLJ.Distributions.Poisson
 
 # Generate some data whose target y looks Poisson when conditioned on
-# X::
+# X:
 N = 10_000
 w = [1.0, -2.0, 3.0]
 mu(x) = exp(w'x) # mean for a log link function
