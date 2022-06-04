@@ -519,8 +519,8 @@ LinearBinaryClassifier
 $(MMI.doc_header(LinearCountRegressor))
 
 `LinearCountRegressor` is a [generalized linear model](https://en.wikipedia.org/wiki/Generalized_linear_model#Variance_function), specialised
-to the case of a Count target variable whose conditional distribution
-is Poisson, with canonical log link function. Options exist to
+to the case of a `Count` target variable (non-negative, unbounded integer) with user-specified
+link function. Options exist to
 specify an intercept or offset feature.
 
 # Training data
