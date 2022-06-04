@@ -558,6 +558,7 @@ Where
    probabilistic.
 - `predict_mean(mach, Xnew)`: instead return the mean of
    each prediction above
+- `predict_median(mach, Xnew)`: instead return the median values. 
 
 # Fitted parameters
 
