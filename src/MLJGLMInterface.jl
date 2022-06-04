@@ -476,6 +476,7 @@ The fields of `report(mach)` are:
 using MLJ
 using CategoricalArrays
 using ScientificTypes
+import GLM
 CLF = @load LinearBinaryClassifier pkg=GLM
 clf = CLF(fit_intercept=false)
 
