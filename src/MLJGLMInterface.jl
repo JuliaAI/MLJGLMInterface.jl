@@ -545,7 +545,9 @@ Where
 - `distribution=Distributions.Poisson()`: The distribution which the residuals/
    errors of the model should fit.
 - `link=GLM.LogLink()`: The function which links the linear prediction function
-   to the probability of a particular outcome or class.
+   to the probability of a particular outcome or class. This should be one of the following: 
+   `GLM.IdentityLink()`, `GLM.InverseLink()`, `GLM.InverseSquareLink()`,
+   `GLM.LogLink()`, `SqrtLink()`.
 - `offsetcol=nothing`: Name of the column to be used as an offset, if any.
    An offset is a variable which is known to have a coefficient of 1.
 
