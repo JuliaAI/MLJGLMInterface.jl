@@ -330,7 +330,7 @@ metadata_model(
 """
 $(MMI.doc_header(LinearRegressor))
 
-[`LinearRegressor`](https://en.wikipedia.org/wiki/Linear_regression) assumes the target is a continuous variable
+`LinearRegressor` assumes the target is a continuous variable
 whose conditional distribution is normal with constant variance, and whose
 expected value is a linear combination of the features (identity link function).
 Options exist to specify an intercept or offset feature.
@@ -545,7 +545,7 @@ Where
 - `distribution=Distributions.Poisson()`: The distribution which the residuals/
    errors of the model should fit.
 - `link=GLM.LogLink()`: The function which links the linear prediction function
-   to the probability of a particular outcome or class. This should be one of the following: 
+   to the probability of a particular outcome or class. This should be one of the following:
    `GLM.IdentityLink()`, `GLM.InverseLink()`, `GLM.InverseSquareLink()`,
    `GLM.LogLink()`, `SqrtLink()`.
 - `offsetcol=nothing`: Name of the column to be used as an offset, if any.
@@ -558,7 +558,7 @@ Where
    probabilistic.
 - `predict_mean(mach, Xnew)`: instead return the mean of
    each prediction above
-- `predict_median(mach, Xnew)`: instead return the median values. 
+- `predict_median(mach, Xnew)`: instead return the median values.
 
 # Fitted parameters
 
