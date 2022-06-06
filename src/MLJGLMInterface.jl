@@ -343,7 +343,7 @@ In MLJ or MLJBase, bind an instance `model` to data with
 
 Where
 
-- `X`: any table of input features (eg, a `DataFrame`) whose columns
+- `X`: is any table of input features (eg, a `DataFrame`) whose columns
   are of scitype `Continuous`; check the scitype with `schema(X)`
 
 - `y`: is the target, which can be any `AbstractVector` whose element
@@ -427,7 +427,7 @@ In MLJ or MLJBase, bind an instance `model` to data with
 
 Where
 
-- `X`: any table of input features (eg, a `DataFrame`) whose columns
+- `X`: is any table of input features (eg, a `DataFrame`) whose columns
   are of scitype `Continuous`; check the scitype with `schema(X)`
 - `y`: is the target, which can be any `AbstractVector` whose element
   scitype is `<:OrderedFactor(2)` or `<:Multiclass(2)`; check the scitype
@@ -532,7 +532,7 @@ In MLJ or MLJBase, bind an instance `model` to data with
 
 Where
 
-- `X`: any table of input features (eg, a `DataFrame`) whose columns
+- `X`: is any table of input features (eg, a `DataFrame`) whose columns
   are of scitype `Continuous`; check the scitype with `schema(X)`
 
 - `y`: is the target, which can be any `AbstractVector` whose element
