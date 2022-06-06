@@ -439,7 +439,8 @@ Where
    If set to false, no intercept will be calculated (e.g. the data is expected
    to be centered)
 - `link = GLM.LogitLink`: The function which links the linear prediction function
-   to the probability of a particular outcome or class.
+   to the probability of a particular outcome or class.T his must have type `GLM.Link01`. Options include
+   `GLM.LogitLink()`, `GLM.ProbitLink()`, `CloglogLink(), `CauchitLink()`.
 - `offsetcol=nothing`: Name of the column to be used as an offset, if any.
    An offset is a variable which is known to have a coefficient of 1.
 
@@ -476,7 +477,7 @@ The fields of `report(mach)` are:
 using MLJ
 using CategoricalArrays
 using ScientificTypes
-import GLM
+import GLM # namespace must be available
 CLF = @load LinearBinaryClassifier pkg=GLM
 clf = CLF(fit_intercept=false, link=GLM.ProbitLink())
 
