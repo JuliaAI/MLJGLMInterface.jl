@@ -371,27 +371,29 @@ Where
 
 The fields of `fitted_params(mach)` are:
 
-- `features`: The names of the features used during model fitting
-- `coef`: The linear coefficients determined by the model
-- `intercept`: The intercept determined by the model
+- `features`: The names of the features used during model fitting.
+- `coef`: The linear coefficients determined by the model.
+- `intercept`: The intercept determined by the model.
 
 # Report
 
 The fields of `report(mach)` are:
 
 - `deviance`: Measure of deviance of fitted model with respect to
-   a perfectly fitted model. For a linear model, this is the weighted
-   residual sum of squares
-- `dof_residual`: degrees of freedom for residuals, when meaningful
-- `stderror`: standard errors of the coefficients
-- `vcov`: estimated variance-covariance matrix of the coefficient estimates
+  a perfectly fitted model. For a linear model, this is the weighted
+  residual sum of squares
+- `dof_residual`: The degrees of freedom for residuals, when meaningful.
+- `stderror`: The standard errors of the coefficients.
+- `vcov`: The estimated variance-covariance matrix of the coefficient estimates.
+- `coef_table`: Table which displays coefficients and summarizes their significance
+  and confidence intervals.
 
 # Examples
 
 ```
 using MLJ
-GLM = @load LinearRegressor pkg=GLM
-glm = GLM()
+LinearRegressor = @load LinearRegressor pkg=GLM
+glm = LinearRegressor()
 
 X, y = make_regression(100, 2) # synthetic data
 mach = machine(glm, X, y) |> fit!
@@ -446,19 +448,19 @@ Where
 
 # Operations
 
-- `predict(mach, Xnew)`: return predictions of the target given
+- `predict(mach, Xnew)`: Return predictions of the target given
   features `Xnew` having the same scitype as `X` above. Predictions
   are probabilistic.
-- `predict_mode(mach, Xnew)`: return the modes of the probabilistic predictions
+- `predict_mode(mach, Xnew)`: Return the modes of the probabilistic predictions
    returned above.
 
 # Fitted parameters
 
 The fields of `fitted_params(mach)` are:
 
-- `features`: The names of the features used during model fitting
-- `coef`: The linear coefficients determined by the model
-- `intercept`: The intercept determined by the model
+- `features`: The names of the features used during model fitting.
+- `coef`: The linear coefficients determined by the model.
+- `intercept`: The intercept determined by the model.
 
 # Report
 
@@ -467,45 +469,39 @@ The fields of `report(mach)` are:
 - `deviance`: Measure of deviance of fitted model with respect to
   a perfectly fitted model. For a linear model, this is the weighted
   residual sum of squares
-- `dof_residual`: degrees of freedom for residuals, when meaningful
-- `stderror`: standard errors of the coefficients
-- `vcov`: estimated variance-covariance matrix of the coefficient estimates
+- `dof_residual`: The degrees of freedom for residuals, when meaningful.
+- `stderror`: The standard errors of the coefficients.
+- `vcov`: The estimated variance-covariance matrix of the coefficient estimates.
+- `coef_table`: Table which displays coefficients and summarizes their significance
+  and confidence intervals.
 
 # Examples
 
 ```
 using MLJ
-using CategoricalArrays
-using ScientificTypes
 import GLM # namespace must be available
+
 CLF = @load LinearBinaryClassifier pkg=GLM
 clf = CLF(fit_intercept=false, link=GLM.ProbitLink())
 
-X, y = @load_iris
+X, y = @load_crabs
 
-# needs binary classification
-idx = findall( x -> string(x) != "setosa", y)
-y = y[idx]
-schema(y)
-droplevels!(y) # drop unused levels
-schema(y) # need multiclass 2
-X = map( x -> x[idx], X)
 mach = machine(clf, X, y) |> fit!
 
-Xnew = (sepal_length = [6.4, 7.2, 7.4],
-        sepal_width = [2.8, 3.0, 2.8],
-        petal_length = [5.6, 5.8, 6.1],
-        petal_width = [2.1, 1.6, 1.9],)
+Xnew = (;FL = [8.1, 24.8, 7.2],
+        RW = [5.1, 25.7, 6.4],
+        CL = [15.9, 46.7, 14.3],
+        CW = [18.7, 59.7, 12.2],
+        BD = [6.2, 23.6, 8.4],)
 
 yhat = predict(mach, Xnew) # probabilistic predictions
 pdf(yhat, levels(y)) # probability matrix
-p_virginica = pdf.(yhat, "virginica")
-p_positive_class = predict_mean(mach, Xnew) # probability of "positive" class
-p_virginica == p_positive_class
+p_B = pdf.(yhat, "B")
+class_labels = predict_mode(mach, Xnew)
 
 
 fitted_params(mach).features
-fitted_params(mach).coef # x1, x2, intercept
+fitted_params(mach).coef
 fitted_params(mach).intercept
 
 report(mach)
@@ -565,9 +561,9 @@ Where
 
 The fields of `fitted_params(mach)` are:
 
-- `features`: The names of the features used during model fitting
-- `coef`: The linear coefficients determined by the model
-- `intercept`: The intercept determined by the model
+- `features`: The names of the features used during model fitting.
+- `coef`: The linear coefficients determined by the model.
+- `intercept`: The intercept determined by the model.
 
 # Report
 
@@ -576,9 +572,11 @@ The fields of `report(mach)` are:
 - `deviance`: Measure of deviance of fitted model with respect to
   a perfectly fitted model. For a linear model, this is the weighted
   residual sum of squares
-- `dof_residual`: degrees of freedom for residuals, when meaningful
-- `stderror`: standard errors of the coefficients
-- `vcov`: estimated variance-covariance matrix of the coefficient estimates
+- `dof_residual`: The degrees of freedom for residuals, when meaningful.
+- `stderror`: The standard errors of the coefficients.
+- `vcov`: The estimated variance-covariance matrix of the coefficient estimates.
+- `coef_table`: Table which displays coefficients and summarizes their significance
+  and confidence intervals.
 
 
 # Examples
