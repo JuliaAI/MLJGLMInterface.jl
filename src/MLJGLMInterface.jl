@@ -481,8 +481,8 @@ The fields of `report(mach)` are:
 using MLJ
 import GLM # namespace must be available
 
-CLF = @load LinearBinaryClassifier pkg=GLM
-clf = CLF(fit_intercept=false, link=GLM.ProbitLink())
+LinearBinaryClassifier = @load LinearBinaryClassifier pkg=GLM
+clf = LinearBinaryClassifier(fit_intercept=false, link=GLM.ProbitLink())
 
 X, y = @load_crabs
 
