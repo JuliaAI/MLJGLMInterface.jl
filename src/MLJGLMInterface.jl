@@ -539,8 +539,8 @@ Where
 - `fit_intercept=true`: Whether to calculate the intercept for this model.
    If set to false, no intercept will be calculated (e.g. the data is expected
    to be centered)
-- `distribution=Distributions.Poisson()`: The distribution which the residuals/
-   errors of the model should fit.
+- `distribution=Distributions.Poisson()`: The distribution which the residuals/errors 
+   of the model should fit.
 - `link=GLM.LogLink()`: The function which links the linear prediction function
    to the probability of a particular outcome or class. This should be one of the following:
    `GLM.IdentityLink()`, `GLM.InverseLink()`, `GLM.InverseSquareLink()`,
