@@ -359,6 +359,8 @@ Where
 - `offsetcol=nothing`: Name of the column to be used as an offset, if any.
    An offset is a variable which is known to have a coefficient of 1.
 
+Train the machine using `fit!(mach, rows=...)`.
+
 # Operations
 
 - `predict(mach, Xnew)`: return predictions of the target given new
@@ -366,12 +368,14 @@ Where
    probabilistic.
 - `predict_mean(mach, Xnew)`: instead return the mean of
    each prediction above
+- `predict_median(mach, Xnew)`: instead return the median of
+   each prediction above.
 
 # Fitted parameters
 
 The fields of `fitted_params(mach)` are:
 
-- `features`: The names of the features used during model fitting.
+- `features`: The names of the features encountered during model fitting.
 - `coef`: The linear coefficients determined by the model.
 - `intercept`: The intercept determined by the model.
 
@@ -418,7 +422,7 @@ LinearRegressor
 $(MMI.doc_header(LinearBinaryClassifier))
 
 `LinearBinaryClassifier` is a [generalized linear model](https://en.wikipedia.org/wiki/Generalized_linear_model#Variance_function), specialised
-to the case of a binary target variable, with a user-specified link function. 
+to the case of a binary target variable, with a user-specified link function.
 Options exist to specify an intercept or offset feature.
 
 
@@ -435,13 +439,15 @@ Where
   scitype is `<:OrderedFactor(2)` or `<:Multiclass(2)`; check the scitype
   with `schema(y)`
 
+Train the machine using `fit!(mach, rows=...)`.
+
 # Hyper-parameters
 
 - `fit_intercept=true`: Whether to calculate the intercept for this model.
    If set to false, no intercept will be calculated (e.g. the data is expected
    to be centered)
 - `link=GLM.LogitLink`: The function which links the linear prediction function
-   to the probability of a particular outcome or class.T his must have type `GLM.Link01`. Options include
+   to the probability of a particular outcome or class. This must have type `GLM.Link01`. Options include
    `GLM.LogitLink()`, `GLM.ProbitLink()`, `CloglogLink(), `CauchitLink()`.
 - `offsetcol=nothing`: Name of the column to be used as an offset, if any.
    An offset is a variable which is known to have a coefficient of 1.
@@ -534,12 +540,14 @@ Where
 - `y`: is the target, which can be any `AbstractVector` whose element
   scitype is `Count`; check the scitype with `schema(y)`
 
+Train the machine using `fit!(mach, rows=...)`.
+
 # Hyper-parameters
 
 - `fit_intercept=true`: Whether to calculate the intercept for this model.
    If set to false, no intercept will be calculated (e.g. the data is expected
    to be centered)
-- `distribution=Distributions.Poisson()`: The distribution which the residuals/errors 
+- `distribution=Distributions.Poisson()`: The distribution which the residuals/errors
    of the model should fit.
 - `link=GLM.LogLink()`: The function which links the linear prediction function
    to the probability of a particular outcome or class. This should be one of the following:
@@ -555,13 +563,14 @@ Where
    probabilistic.
 - `predict_mean(mach, Xnew)`: instead return the mean of
    each prediction above
-- `predict_median(mach, Xnew)`: instead return the median values.
+- `predict_median(mach, Xnew)`: instead return the median of
+   each prediction above.
 
 # Fitted parameters
 
 The fields of `fitted_params(mach)` are:
 
-- `features`: The names of the features used during model fitting.
+- `features`: The names of the features encountered during model fitting.
 - `coef`: The linear coefficients determined by the model.
 - `intercept`: The intercept determined by the model.
 
