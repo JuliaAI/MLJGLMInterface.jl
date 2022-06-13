@@ -418,8 +418,8 @@ LinearRegressor
 $(MMI.doc_header(LinearBinaryClassifier))
 
 `LinearBinaryClassifier` is a [generalized linear model](https://en.wikipedia.org/wiki/Generalized_linear_model#Variance_function), specialised
-to the case of a binary target variable, with a user-
-specified link function. Options exist to specify an intercept or offset feature.
+to the case of a binary target variable, with a user-specified link function. 
+Options exist to specify an intercept or offset feature.
 
 
 # Training data
