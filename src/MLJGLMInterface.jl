@@ -440,7 +440,7 @@ Where
 - `fit_intercept=true`: Whether to calculate the intercept for this model.
    If set to false, no intercept will be calculated (e.g. the data is expected
    to be centered)
-- `link = GLM.LogitLink`: The function which links the linear prediction function
+- `link=GLM.LogitLink`: The function which links the linear prediction function
    to the probability of a particular outcome or class.T his must have type `GLM.Link01`. Options include
    `GLM.LogitLink()`, `GLM.ProbitLink()`, `CloglogLink(), `CauchitLink()`.
 - `offsetcol=nothing`: Name of the column to be used as an offset, if any.
