@@ -606,7 +606,6 @@ Xnew = MLJ.table(rand(3, 3))
 yhat = predict(mach, Xnew)
 yhat_point = predict_mean(mach, Xnew)
 
-
 # get coefficients approximating `w`:
 julia> fitted_params(mach).coef
 3-element Vector{Float64}:
