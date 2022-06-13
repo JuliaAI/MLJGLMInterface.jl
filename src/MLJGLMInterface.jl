@@ -347,7 +347,7 @@ Where
   are of scitype `Continuous`; check the scitype with `schema(X)`
 
 - `y`: is the target, which can be any `AbstractVector` whose element
-  scitype is `Continuous`; check the scitype with `schema(y)`
+  scitype is `Continuous`; check the scitype with `scitype(y)`
 
 # Hyper-parameters
 
