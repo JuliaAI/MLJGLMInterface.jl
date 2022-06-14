@@ -163,7 +163,7 @@ end
 """
     glm_features(model, X)
 
-Returns an iterable features object, to be used in the construction of 
+Returns an iterable features object, to be used in the construction of
 glm formula and glm data header.
 """
 function glm_features(model, X)
@@ -326,5 +326,308 @@ metadata_model(
     descr = LCR_DESCR,
     path = "$PKG.LinearCountRegressor"
 )
+
+"""
+$(MMI.doc_header(LinearRegressor))
+
+`LinearRegressor` assumes the target is a continuous variable
+whose conditional distribution is normal with constant variance, and whose
+expected value is a linear combination of the features (identity link function).
+Options exist to specify an intercept or offset feature.
+
+# Training data
+
+In MLJ or MLJBase, bind an instance `model` to data with
+
+    mach = machine(model, X, y)
+
+Where
+
+- `X`: is any table of input features (eg, a `DataFrame`) whose columns
+  are of scitype `Continuous`; check the scitype with `schema(X)`
+
+- `y`: is the target, which can be any `AbstractVector` whose element
+  scitype is `Continuous`; check the scitype with `scitype(y)`
+
+# Hyper-parameters
+
+- `fit_intercept=true`: Whether to calculate the intercept for this model.
+   If set to false, no intercept will be calculated (e.g. the data is expected
+   to be centered)
+- `allowrankdeficient=false`: Whether to allow rank deficient matrices (e.g.
+   more columns than rows)
+- `offsetcol=nothing`: Name of the column to be used as an offset, if any.
+   An offset is a variable which is known to have a coefficient of 1.
+
+Train the machine using `fit!(mach, rows=...)`.
+
+# Operations
+
+- `predict(mach, Xnew)`: return predictions of the target given new
+   features `Xnew` having the same Scitype as `X` above. Predictions are
+   probabilistic.
+- `predict_mean(mach, Xnew)`: instead return the mean of
+   each prediction above
+- `predict_median(mach, Xnew)`: instead return the median of
+   each prediction above.
+
+# Fitted parameters
+
+The fields of `fitted_params(mach)` are:
+
+- `features`: The names of the features encountered during model fitting.
+- `coef`: The linear coefficients determined by the model.
+- `intercept`: The intercept determined by the model.
+
+# Report
+
+The fields of `report(mach)` are:
+
+- `deviance`: Measure of deviance of fitted model with respect to
+  a perfectly fitted model. For a linear model, this is the weighted
+  residual sum of squares
+- `dof_residual`: The degrees of freedom for residuals, when meaningful.
+- `stderror`: The standard errors of the coefficients.
+- `vcov`: The estimated variance-covariance matrix of the coefficient estimates.
+- `coef_table`: Table which displays coefficients and summarizes their significance
+  and confidence intervals.
+
+# Examples
+
+```
+using MLJ
+LinearRegressor = @load LinearRegressor pkg=GLM
+glm = LinearRegressor()
+
+X, y = make_regression(100, 2) # synthetic data
+mach = machine(glm, X, y) |> fit!
+
+Xnew, _ = make_regression(3, 2)
+yhat = predict(mach, Xnew) # new predictions
+yhat_point = predict_mean(mach, Xnew) # new predictions
+
+fitted_params(mach).features
+fitted_params(mach).coef # x1, x2, intercept
+fitted_params(mach).intercept
+
+report(mach)
+```
+
+See also
+[`LinearCountRegressor`](@ref), [`LinearBinaryClassifier`](@ref)
+"""
+LinearRegressor
+
+"""
+$(MMI.doc_header(LinearBinaryClassifier))
+
+`LinearBinaryClassifier` is a [generalized linear model](https://en.wikipedia.org/wiki/Generalized_linear_model#Variance_function), specialised
+to the case of a binary target variable, with a user-specified link function.
+Options exist to specify an intercept or offset feature.
+
+
+# Training data
+
+In MLJ or MLJBase, bind an instance `model` to data with
+    mach = machine(model, X, y)
+
+Where
+
+- `X`: is any table of input features (eg, a `DataFrame`) whose columns
+  are of scitype `Continuous`; check the scitype with `schema(X)`
+- `y`: is the target, which can be any `AbstractVector` whose element
+  scitype is `<:OrderedFactor(2)` or `<:Multiclass(2)`; check the scitype
+  with `schema(y)`
+
+Train the machine using `fit!(mach, rows=...)`.
+
+# Hyper-parameters
+
+- `fit_intercept=true`: Whether to calculate the intercept for this model.
+   If set to false, no intercept will be calculated (e.g. the data is expected
+   to be centered)
+- `link=GLM.LogitLink`: The function which links the linear prediction function
+   to the probability of a particular outcome or class. This must have type `GLM.Link01`. Options include
+   `GLM.LogitLink()`, `GLM.ProbitLink()`, `CloglogLink(), `CauchitLink()`.
+- `offsetcol=nothing`: Name of the column to be used as an offset, if any.
+   An offset is a variable which is known to have a coefficient of 1.
+
+# Operations
+
+- `predict(mach, Xnew)`: Return predictions of the target given
+  features `Xnew` having the same scitype as `X` above. Predictions
+  are probabilistic.
+- `predict_mode(mach, Xnew)`: Return the modes of the probabilistic predictions
+   returned above.
+
+# Fitted parameters
+
+The fields of `fitted_params(mach)` are:
+
+- `features`: The names of the features used during model fitting.
+- `coef`: The linear coefficients determined by the model.
+- `intercept`: The intercept determined by the model.
+
+# Report
+
+The fields of `report(mach)` are:
+
+- `deviance`: Measure of deviance of fitted model with respect to
+  a perfectly fitted model. For a linear model, this is the weighted
+  residual sum of squares
+- `dof_residual`: The degrees of freedom for residuals, when meaningful.
+- `stderror`: The standard errors of the coefficients.
+- `vcov`: The estimated variance-covariance matrix of the coefficient estimates.
+- `coef_table`: Table which displays coefficients and summarizes their significance
+  and confidence intervals.
+
+# Examples
+
+```
+using MLJ
+import GLM # namespace must be available
+
+LinearBinaryClassifier = @load LinearBinaryClassifier pkg=GLM
+clf = LinearBinaryClassifier(fit_intercept=false, link=GLM.ProbitLink())
+
+X, y = @load_crabs
+
+mach = machine(clf, X, y) |> fit!
+
+Xnew = (;FL = [8.1, 24.8, 7.2],
+        RW = [5.1, 25.7, 6.4],
+        CL = [15.9, 46.7, 14.3],
+        CW = [18.7, 59.7, 12.2],
+        BD = [6.2, 23.6, 8.4],)
+
+yhat = predict(mach, Xnew) # probabilistic predictions
+pdf(yhat, levels(y)) # probability matrix
+p_B = pdf.(yhat, "B")
+class_labels = predict_mode(mach, Xnew)
+
+
+fitted_params(mach).features
+fitted_params(mach).coef
+fitted_params(mach).intercept
+
+report(mach)
+```
+
+See also
+[`LinearRegressor`](@ref), [`LinearCountRegressor`](@ref)
+"""
+LinearBinaryClassifier
+
+"""
+$(MMI.doc_header(LinearCountRegressor))
+
+`LinearCountRegressor` is a [generalized linear model](https://en.wikipedia.org/wiki/Generalized_linear_model#Variance_function), specialised
+to the case of a `Count` target variable (non-negative, unbounded integer) with user-specified
+link function. Options exist to
+specify an intercept or offset feature.
+
+# Training data
+
+In MLJ or MLJBase, bind an instance `model` to data with
+
+    mach = machine(model, X, y)
+
+Where
+
+- `X`: is any table of input features (eg, a `DataFrame`) whose columns
+  are of scitype `Continuous`; check the scitype with `schema(X)`
+
+- `y`: is the target, which can be any `AbstractVector` whose element
+  scitype is `Count`; check the scitype with `schema(y)`
+
+Train the machine using `fit!(mach, rows=...)`.
+
+# Hyper-parameters
+
+- `fit_intercept=true`: Whether to calculate the intercept for this model.
+   If set to false, no intercept will be calculated (e.g. the data is expected
+   to be centered)
+- `distribution=Distributions.Poisson()`: The distribution which the residuals/errors
+   of the model should fit.
+- `link=GLM.LogLink()`: The function which links the linear prediction function
+   to the probability of a particular outcome or class. This should be one of the following:
+   `GLM.IdentityLink()`, `GLM.InverseLink()`, `GLM.InverseSquareLink()`,
+   `GLM.LogLink()`, `GLM.SqrtLink()`.
+- `offsetcol=nothing`: Name of the column to be used as an offset, if any.
+   An offset is a variable which is known to have a coefficient of 1.
+
+# Operations
+
+- `predict(mach, Xnew)`: return predictions of the target given new
+   features `Xnew` having the same Scitype as `X` above. Predictions are
+   probabilistic.
+- `predict_mean(mach, Xnew)`: instead return the mean of
+   each prediction above
+- `predict_median(mach, Xnew)`: instead return the median of
+   each prediction above.
+
+# Fitted parameters
+
+The fields of `fitted_params(mach)` are:
+
+- `features`: The names of the features encountered during model fitting.
+- `coef`: The linear coefficients determined by the model.
+- `intercept`: The intercept determined by the model.
+
+# Report
+
+The fields of `report(mach)` are:
+
+- `deviance`: Measure of deviance of fitted model with respect to
+  a perfectly fitted model. For a linear model, this is the weighted
+  residual sum of squares
+- `dof_residual`: The degrees of freedom for residuals, when meaningful.
+- `stderror`: The standard errors of the coefficients.
+- `vcov`: The estimated variance-covariance matrix of the coefficient estimates.
+- `coef_table`: Table which displays coefficients and summarizes their significance
+  and confidence intervals.
+
+
+# Examples
+
+```
+using MLJ
+import MLJ.Distributions.Poisson
+
+# Generate some data whose target y looks Poisson when conditioned on
+# X:
+N = 10_000
+w = [1.0, -2.0, 3.0]
+mu(x) = exp(w'x) # mean for a log link function
+Xmat = rand(N, 3)
+X = MLJ.table(Xmat)
+y = map(1:N) do i
+    x = Xmat[i, :]
+    rand(Poisson(mu(x)))
+end;
+
+CountRegressor = @load LinearCountRegressor pkg=GLM
+model = CountRegressor(fit_intercept=false)
+mach = machine(model, X, y)
+fit!(mach)
+
+Xnew = MLJ.table(rand(3, 3))
+yhat = predict(mach, Xnew)
+yhat_point = predict_mean(mach, Xnew)
+
+# get coefficients approximating `w`:
+julia> fitted_params(mach).coef
+3-element Vector{Float64}:
+  0.9969008753103842
+ -2.0255901752504775
+  3.014407534033522
+
+report(mach)
+```
+
+See also
+[`LinearRegressor`](@ref), [`LinearBinaryClassifier`](@ref)
+"""
+LinearCountRegressor
 
 end # module
