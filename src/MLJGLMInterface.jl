@@ -676,7 +676,7 @@ Train the machine using `fit!(mach, rows=...)`.
 - `minstepfac::Real=0.001`: Minimum step fraction. Must be between 0 and 1. Lower bound for
   the factor used to update the linear fit.
 - `report_keys::Union{Symbol, Nothing}=DEFAULT_KEYS`: keys to be used in
-  the report. should be one of: `:deviance`, `:dof_residual`, `:stderror`, `:vcov`,
+  the report. Should be one of: `:deviance`, `:dof_residual`, `:stderror`, `:vcov`,
   `:coef_table`.
 
 # Operations
