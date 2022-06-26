@@ -783,10 +783,10 @@ Train the machine using `fit!(mach, rows=...)`.
 - `offsetcol=nothing`: Name of the column to be used as an offset, if any.
    An offset is a variable which is known to have a coefficient of 1.
 - `maxiter::Integer=30`: The maximum number of iterations allowed to achieve convergence.
-- `atol::Real=1e-6`: Threshold for convergence. Convergence is achieved when the relative
+- `atol::Real=1e-6`: Absolute threshold for convergence. Convergence is achieved when the relative
    change in deviance is less than `max(rtol*dev, atol). This term exists to avoid failure
    when deviance is unchanged except for rounding errors.
-- `rtol::Real=1e-6`: Threshold for convergence. Convergence is achieved when the relative
+- `rtol::Real=1e-6`: Relative threshold for convergence. Convergence is achieved when the relative
    change in deviance is less than `max(rtol*dev, atol). This term exists to avoid failure
    when deviance is unchanged except for rounding errors.
 - `minstepfac::Real=0.001`: Minimum step fraction. Must be between 0 and 1. Lower bound for
