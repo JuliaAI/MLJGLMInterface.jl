@@ -568,10 +568,11 @@ Where
 - `fit_intercept=true`: Whether to calculate the intercept for this model.
    If set to false, no intercept will be calculated (e.g. the data is expected
    to be centered)
-- `allowrankdeficient=false`: Whether to allow rank deficient matrices (e.g.
-   more columns than rows)
 - `offsetcol=nothing`: Name of the column to be used as an offset, if any.
    An offset is a variable which is known to have a coefficient of 1.
+- `report_keys::Union{Symbol, Nothing}=DEFAULT_KEYS`: keys to be used in
+  the report. Should be one of: `:deviance`, `:dof_residual`, `:stderror`, `:vcov`,
+  `:coef_table`.
 
 Train the machine using `fit!(mach, rows=...)`.
 
@@ -665,6 +666,18 @@ Train the machine using `fit!(mach, rows=...)`.
    `GLM.LogitLink()`, `GLM.ProbitLink()`, `CloglogLink(), `CauchitLink()`.
 - `offsetcol=nothing`: Name of the column to be used as an offset, if any.
    An offset is a variable which is known to have a coefficient of 1.
+- `maxiter::Integer=30`: The maximum number of iterations allowed to achieve convergence.
+- `atol::Real=1e-6`: Absolute threshold for convergence. Convergence is achieved when the relative
+   change in deviance is less than `max(rtol*dev, atol). This term exists to avoid failure
+   when deviance is unchanged except for rounding errors.
+- `rtol::Real=1e-6`: Relative threshold for convergence. Convergence is achieved when the relative
+   change in deviance is less than `max(rtol*dev, atol). This term exists to avoid failure
+   when deviance is unchanged except for rounding errors.
+- `minstepfac::Real=0.001`: Minimum step fraction. Must be between 0 and 1. Lower bound for
+  the factor used to update the linear fit.
+- `report_keys::Union{Symbol, Nothing}=DEFAULT_KEYS`: keys to be used in
+  the report. Should be one of: `:deviance`, `:dof_residual`, `:stderror`, `:vcov`,
+  `:coef_table`.
 
 # Operations
 
@@ -769,6 +782,18 @@ Train the machine using `fit!(mach, rows=...)`.
    `GLM.LogLink()`, `GLM.SqrtLink()`.
 - `offsetcol=nothing`: Name of the column to be used as an offset, if any.
    An offset is a variable which is known to have a coefficient of 1.
+- `maxiter::Integer=30`: The maximum number of iterations allowed to achieve convergence.
+- `atol::Real=1e-6`: Absolute threshold for convergence. Convergence is achieved when the relative
+   change in deviance is less than `max(rtol*dev, atol). This term exists to avoid failure
+   when deviance is unchanged except for rounding errors.
+- `rtol::Real=1e-6`: Relative threshold for convergence. Convergence is achieved when the relative
+   change in deviance is less than `max(rtol*dev, atol). This term exists to avoid failure
+   when deviance is unchanged except for rounding errors.
+- `minstepfac::Real=0.001`: Minimum step fraction. Must be between 0 and 1. Lower bound for
+  the factor used to update the linear fit.
+- `report_keys::Union{Symbol, Nothing}=DEFAULT_KEYS`: keys to be used in
+  the report. Should be one of: `:deviance`, `:dof_residual`, `:stderror`, `:vcov`,
+  `:coef_table`.
 
 # Operations
 
@@ -845,3 +870,5 @@ See also
 LinearCountRegressor
 
 end # module
+
+
