@@ -571,7 +571,7 @@ Where
 - `offsetcol=nothing`: Name of the column to be used as an offset, if any.
    An offset is a variable which is known to have a coefficient of 1.
 - `report_keys::Union{Symbol, Nothing}=DEFAULT_KEYS`: keys to be used in
-  the report. should be one of: `:deviance`, `:dof_residual`, `:stderror`, `:vcov`,
+  the report. Should be one of: `:deviance`, `:dof_residual`, `:stderror`, `:vcov`,
   `:coef_table`.
 
 Train the machine using `fit!(mach, rows=...)`.
