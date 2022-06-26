@@ -1,6 +1,6 @@
-# MLJ <> GLM.jl
+# MLJGLMInterface.jl
 
-Repository implementing MLJ interface for 
+Repository implementing [MLJ](https://alan-turing-institute.github.io/MLJ.jl/dev/) interface for 
 [GLM](https://github.com/JuliaStats/GLM.jl) models.
 
 
