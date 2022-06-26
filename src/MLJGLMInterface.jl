@@ -551,11 +551,12 @@ Options exist to specify an intercept or offset feature.
 
 # Training data
 
-In MLJ or MLJBase, bind an instance `model` to data with
+In MLJ or MLJBase, bind an instance `model` to data with one of:
 
     mach = machine(model, X, y)
+    mach = machine(model, X, y, w)
 
-Where
+Here
 
 - `X`: is any table of input features (eg, a `DataFrame`) whose columns
   are of scitype `Continuous`; check the scitype with `schema(X)`
@@ -563,13 +564,23 @@ Where
 - `y`: is the target, which can be any `AbstractVector` whose element
   scitype is `Continuous`; check the scitype with `scitype(y)`
 
+- `w`: is a vector of `Real` per-observation weights
+
 # Hyper-parameters
 
 - `fit_intercept=true`: Whether to calculate the intercept for this model.
    If set to false, no intercept will be calculated (e.g. the data is expected
    to be centered)
+
+- `dropcollinear=false`: Whether to drop features in the training data
+  to ensure linear independence.  If true , only the first of each set
+  of linearly-dependent features is used. The coefficient for
+  redundant linearly dependent features is `0.0` and all associated
+  statistics are set to `NaN`.
+
 - `offsetcol=nothing`: Name of the column to be used as an offset, if any.
    An offset is a variable which is known to have a coefficient of 1.
+
 - `report_keys::Union{Symbol, Nothing}=DEFAULT_KEYS`: keys to be used in
   the report. Should be one of: `:deviance`, `:dof_residual`, `:stderror`, `:vcov`,
   `:coef_table`.
@@ -581,8 +592,10 @@ Train the machine using `fit!(mach, rows=...)`.
 - `predict(mach, Xnew)`: return predictions of the target given new
    features `Xnew` having the same Scitype as `X` above. Predictions are
    probabilistic.
+
 - `predict_mean(mach, Xnew)`: instead return the mean of
    each prediction above
+
 - `predict_median(mach, Xnew)`: instead return the median of
    each prediction above.
 
@@ -591,7 +604,9 @@ Train the machine using `fit!(mach, rows=...)`.
 The fields of `fitted_params(mach)` are:
 
 - `features`: The names of the features encountered during model fitting.
+
 - `coef`: The linear coefficients determined by the model.
+
 - `intercept`: The intercept determined by the model.
 
 # Report
@@ -601,9 +616,13 @@ The fields of `report(mach)` are:
 - `deviance`: Measure of deviance of fitted model with respect to
   a perfectly fitted model. For a linear model, this is the weighted
   residual sum of squares
+
 - `dof_residual`: The degrees of freedom for residuals, when meaningful.
+
 - `stderror`: The standard errors of the coefficients.
+
 - `vcov`: The estimated variance-covariance matrix of the coefficient estimates.
+
 - `coef_table`: Table which displays coefficients and summarizes their significance
   and confidence intervals.
 
@@ -636,77 +655,92 @@ LinearRegressor
 """
 $(MMI.doc_header(LinearBinaryClassifier))
 
-`LinearBinaryClassifier` is a [generalized linear model](https://en.wikipedia.org/wiki/Generalized_linear_model#Variance_function), specialised
-to the case of a binary target variable, with a user-specified link function.
+`LinearBinaryClassifier` is a [generalized linear
+model](https://en.wikipedia.org/wiki/Generalized_linear_model#Variance_function),
+specialised to the case of a binary target variable, with a user-specified link function.
 Options exist to specify an intercept or offset feature.
 
 
 # Training data
 
-In MLJ or MLJBase, bind an instance `model` to data with
+In MLJ or MLJBase, bind an instance `model` to data with one of:
+
     mach = machine(model, X, y)
+    mach = machine(model, X, y, w)
 
-Where
+Here
 
-- `X`: is any table of input features (eg, a `DataFrame`) whose columns
-  are of scitype `Continuous`; check the scitype with `schema(X)`
-- `y`: is the target, which can be any `AbstractVector` whose element
-  scitype is `<:OrderedFactor(2)` or `<:Multiclass(2)`; check the scitype
-  with `schema(y)`
+- `X`: is any table of input features (eg, a `DataFrame`) whose columns are of scitype
+  `Continuous`; check the scitype with `schema(X)`
+
+- `y`: is the target, which can be any `AbstractVector` whose element scitype is
+  `<:OrderedFactor(2)` or `<:Multiclass(2)`; check the scitype with `schema(y)`
+
+- `w`: is a vector of `Real` per-observation weights
 
 Train the machine using `fit!(mach, rows=...)`.
 
 # Hyper-parameters
 
-- `fit_intercept=true`: Whether to calculate the intercept for this model.
-   If set to false, no intercept will be calculated (e.g. the data is expected
-   to be centered)
-- `link=GLM.LogitLink`: The function which links the linear prediction function
-   to the probability of a particular outcome or class. This must have type `GLM.Link01`. Options include
-   `GLM.LogitLink()`, `GLM.ProbitLink()`, `CloglogLink(), `CauchitLink()`.
-- `offsetcol=nothing`: Name of the column to be used as an offset, if any.
-   An offset is a variable which is known to have a coefficient of 1.
+- `fit_intercept=true`: Whether to calculate the intercept for this model.  If set to false,
+   no intercept will be calculated (e.g. the data is expected to be centered)
+
+- `link=GLM.LogitLink`: The function which links the linear prediction function to the
+   probability of a particular outcome or class. This must have type `GLM.Link01`. Options
+   include `GLM.LogitLink()`, `GLM.ProbitLink()`, `CloglogLink(), `CauchitLink()`.
+
+- `offsetcol=nothing`: Name of the column to be used as an offset, if any.  An offset is a
+   variable which is known to have a coefficient of 1.
+
 - `maxiter::Integer=30`: The maximum number of iterations allowed to achieve convergence.
-- `atol::Real=1e-6`: Absolute threshold for convergence. Convergence is achieved when the relative
-   change in deviance is less than `max(rtol*dev, atol). This term exists to avoid failure
-   when deviance is unchanged except for rounding errors.
-- `rtol::Real=1e-6`: Relative threshold for convergence. Convergence is achieved when the relative
-   change in deviance is less than `max(rtol*dev, atol). This term exists to avoid failure
-   when deviance is unchanged except for rounding errors.
+
+- `atol::Real=1e-6`: Absolute threshold for convergence. Convergence is achieved when the
+   relative change in deviance is less than `max(rtol*dev, atol). This term exists to avoid
+   failure when deviance is unchanged except for rounding errors.
+
+- `rtol::Real=1e-6`: Relative threshold for convergence. Convergence is achieved when the
+   relative change in deviance is less than `max(rtol*dev, atol). This term exists to avoid
+   failure when deviance is unchanged except for rounding errors.
+
 - `minstepfac::Real=0.001`: Minimum step fraction. Must be between 0 and 1. Lower bound for
   the factor used to update the linear fit.
-- `report_keys::Union{Symbol, Nothing}=DEFAULT_KEYS`: keys to be used in
-  the report. Should be one of: `:deviance`, `:dof_residual`, `:stderror`, `:vcov`,
-  `:coef_table`.
+
+- `report_keys::Union{Symbol, Nothing}=DEFAULT_KEYS`: keys to be used in the report. Should
+  be one of: `:deviance`, `:dof_residual`, `:stderror`, `:vcov`, `:coef_table`.
 
 # Operations
 
-- `predict(mach, Xnew)`: Return predictions of the target given
-  features `Xnew` having the same scitype as `X` above. Predictions
-  are probabilistic.
-- `predict_mode(mach, Xnew)`: Return the modes of the probabilistic predictions
-   returned above.
+- `predict(mach, Xnew)`: Return predictions of the target given features `Xnew` having the
+  same scitype as `X` above. Predictions are probabilistic.
+
+- `predict_mode(mach, Xnew)`: Return the modes of the probabilistic predictions returned
+   above.
 
 # Fitted parameters
 
 The fields of `fitted_params(mach)` are:
 
 - `features`: The names of the features used during model fitting.
+
 - `coef`: The linear coefficients determined by the model.
+
 - `intercept`: The intercept determined by the model.
 
 # Report
 
 The fields of `report(mach)` are:
 
-- `deviance`: Measure of deviance of fitted model with respect to
-  a perfectly fitted model. For a linear model, this is the weighted
-  residual sum of squares
+- `deviance`: Measure of deviance of fitted model with respect to a perfectly fitted
+  model. For a linear model, this is the weighted residual sum of squares
+
 - `dof_residual`: The degrees of freedom for residuals, when meaningful.
+
 - `stderror`: The standard errors of the coefficients.
+
 - `vcov`: The estimated variance-covariance matrix of the coefficient estimates.
-- `coef_table`: Table which displays coefficients and summarizes their significance
-  and confidence intervals.
+
+- `coef_table`: Table which displays coefficients and summarizes their significance and
+  confidence intervals.
 
 # Examples
 
@@ -732,7 +766,6 @@ pdf(yhat, levels(y)) # probability matrix
 p_B = pdf.(yhat, "B")
 class_labels = predict_mode(mach, Xnew)
 
-
 fitted_params(mach).features
 fitted_params(mach).coef
 fitted_params(mach).intercept
@@ -748,83 +781,96 @@ LinearBinaryClassifier
 """
 $(MMI.doc_header(LinearCountRegressor))
 
-`LinearCountRegressor` is a [generalized linear model](https://en.wikipedia.org/wiki/Generalized_linear_model#Variance_function), specialised
-to the case of a `Count` target variable (non-negative, unbounded integer) with user-specified
-link function. Options exist to
-specify an intercept or offset feature.
+`LinearCountRegressor` is a [generalized linear
+model](https://en.wikipedia.org/wiki/Generalized_linear_model#Variance_function),
+specialised to the case of a `Count` target variable (non-negative, unbounded integer) with
+user-specified link function. Options exist to specify an intercept or offset feature.
 
 # Training data
 
-In MLJ or MLJBase, bind an instance `model` to data with
+In MLJ or MLJBase, bind an instance `model` to data with one of:
 
     mach = machine(model, X, y)
+    mach = machine(model, X, y, w)
 
-Where
+Here
 
-- `X`: is any table of input features (eg, a `DataFrame`) whose columns
-  are of scitype `Continuous`; check the scitype with `schema(X)`
+- `X`: is any table of input features (eg, a `DataFrame`) whose columns are of scitype
+  `Continuous`; check the scitype with `schema(X)`
 
-- `y`: is the target, which can be any `AbstractVector` whose element
-  scitype is `Count`; check the scitype with `schema(y)`
+- `y`: is the target, which can be any `AbstractVector` whose element scitype is `Count`;
+  check the scitype with `schema(y)`
+
+- `w`: is a vector of `Real` per-observation weights
 
 Train the machine using `fit!(mach, rows=...)`.
 
 # Hyper-parameters
 
-- `fit_intercept=true`: Whether to calculate the intercept for this model.
-   If set to false, no intercept will be calculated (e.g. the data is expected
-   to be centered)
-- `distribution=Distributions.Poisson()`: The distribution which the residuals/errors
-   of the model should fit.
-- `link=GLM.LogLink()`: The function which links the linear prediction function
-   to the probability of a particular outcome or class. This should be one of the following:
-   `GLM.IdentityLink()`, `GLM.InverseLink()`, `GLM.InverseSquareLink()`,
-   `GLM.LogLink()`, `GLM.SqrtLink()`.
-- `offsetcol=nothing`: Name of the column to be used as an offset, if any.
-   An offset is a variable which is known to have a coefficient of 1.
+- `fit_intercept=true`: Whether to calculate the intercept for this model. If set to false,
+   no intercept will be calculated (e.g. the data is expected to be centered)
+
+- `distribution=Distributions.Poisson()`: The distribution which the residuals/errors of the
+   model should fit.
+
+- `link=GLM.LogLink()`: The function which links the linear prediction function to the
+   probability of a particular outcome or class. This should be one of the following:
+   `GLM.IdentityLink()`, `GLM.InverseLink()`, `GLM.InverseSquareLink()`, `GLM.LogLink()`,
+   `GLM.SqrtLink()`.
+
+- `offsetcol=nothing`: Name of the column to be used as an offset, if any.  An offset is a
+   variable which is known to have a coefficient of 1.
+
 - `maxiter::Integer=30`: The maximum number of iterations allowed to achieve convergence.
-- `atol::Real=1e-6`: Absolute threshold for convergence. Convergence is achieved when the relative
-   change in deviance is less than `max(rtol*dev, atol). This term exists to avoid failure
-   when deviance is unchanged except for rounding errors.
-- `rtol::Real=1e-6`: Relative threshold for convergence. Convergence is achieved when the relative
-   change in deviance is less than `max(rtol*dev, atol). This term exists to avoid failure
-   when deviance is unchanged except for rounding errors.
+
+- `atol::Real=1e-6`: Absolute threshold for convergence. Convergence is achieved when the
+   relative change in deviance is less than `max(rtol*dev, atol). This term exists to avoid
+   failure when deviance is unchanged except for rounding errors.
+
+- `rtol::Real=1e-6`: Relative threshold for convergence. Convergence is achieved when the
+   relative change in deviance is less than `max(rtol*dev, atol). This term exists to avoid
+   failure when deviance is unchanged except for rounding errors.
+
 - `minstepfac::Real=0.001`: Minimum step fraction. Must be between 0 and 1. Lower bound for
   the factor used to update the linear fit.
-- `report_keys::Union{Symbol, Nothing}=DEFAULT_KEYS`: keys to be used in
-  the report. Should be one of: `:deviance`, `:dof_residual`, `:stderror`, `:vcov`,
-  `:coef_table`.
+
+- `report_keys::Union{Symbol, Nothing}=DEFAULT_KEYS`: keys to be used in the report. Should
+  be one of: `:deviance`, `:dof_residual`, `:stderror`, `:vcov`, `:coef_table`.
 
 # Operations
 
-- `predict(mach, Xnew)`: return predictions of the target given new
-   features `Xnew` having the same Scitype as `X` above. Predictions are
-   probabilistic.
-- `predict_mean(mach, Xnew)`: instead return the mean of
-   each prediction above
-- `predict_median(mach, Xnew)`: instead return the median of
-   each prediction above.
+- `predict(mach, Xnew)`: return predictions of the target given new features `Xnew` having
+   the same Scitype as `X` above. Predictions are probabilistic.
+
+- `predict_mean(mach, Xnew)`: instead return the mean of each prediction above
+
+- `predict_median(mach, Xnew)`: instead return the median of each prediction above.
 
 # Fitted parameters
 
 The fields of `fitted_params(mach)` are:
 
 - `features`: The names of the features encountered during model fitting.
+
 - `coef`: The linear coefficients determined by the model.
+
 - `intercept`: The intercept determined by the model.
 
 # Report
 
 The fields of `report(mach)` are:
 
-- `deviance`: Measure of deviance of fitted model with respect to
-  a perfectly fitted model. For a linear model, this is the weighted
-  residual sum of squares
+- `deviance`: Measure of deviance of fitted model with respect to a perfectly fitted
+  model. For a linear model, this is the weighted residual sum of squares
+
 - `dof_residual`: The degrees of freedom for residuals, when meaningful.
+
 - `stderror`: The standard errors of the coefficients.
+
 - `vcov`: The estimated variance-covariance matrix of the coefficient estimates.
-- `coef_table`: Table which displays coefficients and summarizes their significance
-  and confidence intervals.
+
+- `coef_table`: Table which displays coefficients and summarizes their significance and
+  confidence intervals.
 
 
 # Examples
@@ -870,5 +916,3 @@ See also
 LinearCountRegressor
 
 end # module
-
-
