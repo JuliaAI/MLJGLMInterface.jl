@@ -519,7 +519,6 @@ metadata_model(
     input = Table(Continuous),
     target = AbstractVector{Continuous},
     supports_weights = true,
-    descr = LR_DESCR,
     path = "$PKG.LinearRegressor"
 )
 
@@ -528,7 +527,6 @@ metadata_model(
     input = Table(Continuous),
     target = AbstractVector{<:Finite{2}},
     supports_weights = true,
-    descr = LBC_DESCR,
     path = "$PKG.LinearBinaryClassifier"
 )
 
@@ -537,7 +535,6 @@ metadata_model(
     input = Table(Continuous),
     target = AbstractVector{Count},
     supports_weights = true,
-    descr = LCR_DESCR,
     path = "$PKG.LinearCountRegressor"
 )
 
