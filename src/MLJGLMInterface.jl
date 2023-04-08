@@ -291,17 +291,29 @@ function glm_report(glm_model, features, reportkeys)
 end
 
 """
-    glm_formula(model, features) -> FormulaTerm
+    glm_formula(model, features::AbstractVector{Symbol}) -> FormulaTerm
 
 Return formula which is ready to be passed to `fit(form, data, ...)`.
 """
-function glm_formula(model, features)::FormulaTerm
+function glm_formula(model, features::AbstractVector{Symbol})::FormulaTerm
     # By default, using a JuliaStats formula will add an intercept.
     # Adding a zero term explicitly disables the intercept.
     # See the StatsModels.jl tests for more information.
     intercept_term = model.fit_intercept ? 1 : 0
     form = GLM.Term(:y) ~ sum(GLM.term.(features)) + GLM.term(intercept_term)
-    return form
+
+    # Workaround https://github.com/JuliaStats/StatsModels.jl/issues/289.
+    fixed_form = let
+        FormulaTerm = GLM.StatsModels.FormulaTerm
+        fixed_rhs = if form.rhs[1] isa GLM.StatsModels.ConstantTerm
+            (form.rhs[2:end]..., form.rhs[1])
+        else
+            form.rhs
+        end
+        FormulaTerm(form.lhs, fixed_rhs)
+    end
+
+    return fixed_form
 end
 
 """
@@ -351,7 +363,6 @@ struct FitResult{V<:AbstractVector, T, R}
     params::R
 end
 
-coefs(fr::FitResult) = fr.coefs
 dispersion(fr::FitResult) = fr.dispersion
 params(fr::FitResult) = fr.params
 
@@ -430,6 +441,8 @@ end
 glm_fitresult(::LinearRegressor, fitresult) = fitresult
 glm_fitresult(::LinearCountRegressor, fitresult) = fitresult
 glm_fitresult(::LinearBinaryClassifier, fitresult) = fitresult[1]
+
+coefs(fr::FitResult) = fr.coefs
 
 function MMI.fitted_params(model::GLM_MODELS, fitresult)
     result = glm_fitresult(model, fitresult)

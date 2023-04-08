@@ -27,7 +27,7 @@ expit(X) = 1 ./ (1 .+ exp.(-X))
     ytrain = selectrows(y, train)
     wtrain = selectrows(w, train)
     Xtest  = selectrows(X, test)
-    
+
     fitresult, _, _ = fit(atom_ols, 1, Xtrain, ytrain)
     θ = MLJBase.fitted_params(atom_ols, fitresult)
 
@@ -143,7 +143,6 @@ end
 
     lcr = LinearCountRegressor(fit_intercept=false)
 
-    
     fitresult, _, _ = fit(lcr, 1, XTable, y)
     θ̂ = fitted_params(lcr, fitresult).coef
     @test norm(θ̂ .- θ)/norm(θ) ≤ 0.03
@@ -356,4 +355,10 @@ end
     lr = LinearRegressor()
     # Smoke test whether it crashes on an LinearAlgebra.Adjoint.
     fit(lr, 1, X, y)
+end
+
+@testset "Issue 34" begin
+    model = LinearRegressor()
+    form = MLJGLMInterface.glm_formula(model, [:a, :b]) |> string
+    @test form == "y ~ a + b + 1"
 end
