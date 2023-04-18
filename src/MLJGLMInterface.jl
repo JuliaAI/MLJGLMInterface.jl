@@ -591,7 +591,7 @@ Here
 - `offsetcol=nothing`: Name of the column to be used as an offset, if any.
    An offset is a variable which is known to have a coefficient of 1.
 
-- `report_keys::Union{Symbol, Nothing}=DEFAULT_KEYS`: keys to be used in
+- `report_keys::Union{Symbol, Nothing}=DEFAULT_KEYS`: vector of keys to be used in
   the report. Should be one of: `:deviance`, `:dof_residual`, `:stderror`, `:vcov`,
   `:coef_table`.
 
@@ -621,7 +621,7 @@ The fields of `fitted_params(mach)` are:
 
 # Report
 
-The fields of `report(mach)` are:
+When all keys are enabled in `report_keys`, the following fields are available in `report(mach)`:
 
 - `deviance`: Measure of deviance of fitted model with respect to
   a perfectly fitted model. For a linear model, this is the weighted
