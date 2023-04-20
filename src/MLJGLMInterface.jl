@@ -18,9 +18,9 @@ import MLJModelInterface
 import MLJModelInterface: metadata_pkg, metadata_model, Table, Continuous, Count, Finite,
     OrderedFactor, Multiclass, @mlj_model
 using Distributions: Bernoulli, Distribution, Poisson
+using StatsModels: ConstantTerm, Term, FormulaTerm, term
 using Tables
 import GLM
-using GLM: FormulaTerm
 
 const MMI = MLJModelInterface
 const PKG = "MLJGLMInterface"
@@ -290,6 +290,15 @@ function glm_report(glm_model, features, reportkeys)
     return NamedTuple{Tuple(keys(report_dict))}(values(report_dict))
 end
 
+function _ensure_intercept_at_end(form::FormulaTerm)
+    fixed_rhs = if first(form.rhs) isa ConstantTerm
+        (form.rhs[2:end]..., form.rhs[1])
+    else
+        form.rhs
+    end
+    return FormulaTerm(form.lhs, fixed_rhs)
+end
+
 """
     glm_formula(model, features::AbstractVector{Symbol}) -> FormulaTerm
 
@@ -300,19 +309,8 @@ function glm_formula(model, features::AbstractVector{Symbol})::FormulaTerm
     # Adding a zero term explicitly disables the intercept.
     # See the StatsModels.jl tests for more information.
     intercept_term = model.fit_intercept ? 1 : 0
-    form = GLM.Term(:y) ~ sum(GLM.term.(features)) + GLM.term(intercept_term)
-
-    # Workaround https://github.com/JuliaStats/StatsModels.jl/issues/289.
-    fixed_form = let
-        FormulaTerm = GLM.StatsModels.FormulaTerm
-        fixed_rhs = if form.rhs[1] isa GLM.StatsModels.ConstantTerm
-            (form.rhs[2:end]..., form.rhs[1])
-        else
-            form.rhs
-        end
-        FormulaTerm(form.lhs, fixed_rhs)
-    end
-
+    form = FormulaTerm(Term(:y), sum(term.(features)) + term(intercept_term))
+    fixed_form = _ensure_intercept_at_end(form)
     return fixed_form
 end
 
