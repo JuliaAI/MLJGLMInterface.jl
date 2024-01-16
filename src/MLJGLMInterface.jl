@@ -45,7 +45,15 @@ const LCR_DESCR = "Linear count regressor with specified "*
 # LinearBinaryClassifier --> Probabilistic w Binary target // logit,cauchit,..
 # MulticlassClassifier   --> Probabilistic w Multiclass target
 
-const VALID_KEYS = [:deviance, :dof_residual, :stderror, :vcov, :coef_table]
+const VALID_KEYS = [
+    :deviance,
+    :dof_residual,
+    :stderror,
+    :vcov,
+    :coef_table,
+    :raw_glm_model,
+]
+const VALID_KEYS_LIST = join(map(k-> ":$k", VALID_KEYS), ", ", " and ")
 const DEFAULT_KEYS = VALID_KEYS # For more understandable warning mssg by `@mlj_model`.
 const KEYS_TYPE = Union{Nothing, AbstractVector{Symbol}}
 
@@ -287,6 +295,10 @@ function glm_report(glm_model, features, reportkeys)
         end
         report_dict[:coef_table] = coef_table
     end
+    if :raw_glm_model in reportkeys
+        report_dict[:raw_glm_model] = glm_model
+    end
+
     return NamedTuple{Tuple(keys(report_dict))}(values(report_dict))
 end
 
@@ -590,8 +602,7 @@ Here
    An offset is a variable which is known to have a coefficient of 1.
 
 - `report_keys::Union{Symbol, Nothing}=DEFAULT_KEYS`: vector of keys to be used in
-  the report. Should be one of: `:deviance`, `:dof_residual`, `:stderror`, `:vcov`,
-  `:coef_table`.
+  the report. Possible keys are: $VALID_KEYS_LIST.
 
 Train the machine using `fit!(mach, rows=...)`.
 
@@ -619,7 +630,8 @@ The fields of `fitted_params(mach)` are:
 
 # Report
 
-When all keys are enabled in `report_keys`, the following fields are available in `report(mach)`:
+When all keys are enabled in `report_keys`, the following fields are available in
+`report(mach)`:
 
 - `deviance`: Measure of deviance of fitted model with respect to
   a perfectly fitted model. For a linear model, this is the weighted
@@ -633,6 +645,9 @@ When all keys are enabled in `report_keys`, the following fields are available i
 
 - `coef_table`: Table which displays coefficients and summarizes their significance
   and confidence intervals.
+
+- `raw_glm_model`: The raw fitted model returned by `GLM.lm`. Note this points to training
+  data.
 
 # Examples
 
@@ -713,8 +728,8 @@ Train the machine using `fit!(mach, rows=...)`.
 - `minstepfac::Real=0.001`: Minimum step fraction. Must be between 0 and 1. Lower bound for
   the factor used to update the linear fit.
 
-- `report_keys::Union{Symbol, Nothing}=DEFAULT_KEYS`: keys to be used in the report. Should
-  be one of: `:deviance`, `:dof_residual`, `:stderror`, `:vcov`, `:coef_table`.
+- `report_keys::Union{Symbol, Nothing}=DEFAULT_KEYS`: keys to be used in the
+  report. Possible keys are: $VALID_KEYS_LIST.
 
 # Operations
 
@@ -749,6 +764,9 @@ The fields of `report(mach)` are:
 
 - `coef_table`: Table which displays coefficients and summarizes their significance and
   confidence intervals.
+
+- `raw_glm_model`: The raw fitted model returned by `GLM.glm`. Note this points to training
+  data.
 
 # Examples
 
@@ -842,8 +860,8 @@ Train the machine using `fit!(mach, rows=...)`.
 - `minstepfac::Real=0.001`: Minimum step fraction. Must be between 0 and 1. Lower bound for
   the factor used to update the linear fit.
 
-- `report_keys::Union{Symbol, Nothing}=DEFAULT_KEYS`: keys to be used in the report. Should
-  be one of: `:deviance`, `:dof_residual`, `:stderror`, `:vcov`, `:coef_table`.
+- `report_keys::Union{Symbol, Nothing}=DEFAULT_KEYS`: keys to be used in the
+  report. Possible keys are: $VALID_KEYS_LIST.
 
 # Operations
 
@@ -879,6 +897,9 @@ The fields of `report(mach)` are:
 
 - `coef_table`: Table which displays coefficients and summarizes their significance and
   confidence intervals.
+
+- `raw_glm_model`: The raw fitted model returned by `GLM.glm`. Note this points to training
+  data.
 
 
 # Examples

@@ -1,6 +1,7 @@
 using Test
 
 using MLJBase
+using StatisticalMeasures
 using LinearAlgebra
 using Statistics
 using MLJGLMInterface
@@ -66,7 +67,7 @@ expit(X) = 1 ./ (1 .+ exp.(-X))
     @test hyp_types[2] == "Bool"
     @test hyp_types[3] == "Union{Nothing, Symbol}"
     @test hyp_types[4] == "Union{Nothing, AbstractVector{Symbol}}"
-    
+
 end
 
 ###
@@ -86,18 +87,18 @@ end
 
     fitresult, _, report = fit(lr, 1, X, y)
     yhat = predict(lr, fitresult, X)
-    @test mean(cross_entropy(yhat, y)) < 0.25
+    @test cross_entropy(yhat, y) < 0.25
     fitresult1, _, report1 = fit(pr, 1, X, y)
     yhat1 = predict(pr, fitresult1, X)
-    @test mean(cross_entropy(yhat1, y)) < 0.25
+    @test cross_entropy(yhat1, y) < 0.25
 
     fitresultw, _, reportw = fit(lr, 1, X, y, w)
     yhatw = predict(lr, fitresultw, X)
-    @test mean(cross_entropy(yhatw, y)) < 0.25
+    @test cross_entropy(yhatw, y) < 0.25
     @test yhatw ≈ yhat
     fitresultw1, _, reportw1 = fit(pr, 1, X, y, w)
     yhatw1 = predict(pr, fitresultw1, X)
-    @test mean(cross_entropy(yhatw1, y)) < 0.25
+    @test cross_entropy(yhatw1, y) < 0.25
     @test yhatw1 ≈ yhat1
 
     # check predict on `Xnew` with wrong dims
@@ -124,6 +125,7 @@ end
     @test hyper_params[6] == :rtol
     @test hyper_params[7] == :minstepfac
     @test hyper_params[8] == :report_keys
+
 end
 
 ###
@@ -150,7 +152,7 @@ end
     fitresultw, _, _ = fit(lcr, 1, XTable, y, w)
     θ̂w = fitted_params(lcr, fitresultw).coef
     @test norm(θ̂w .- θ)/norm(θ) ≤ 0.03
-    @test θ̂w ≈ θ̂ 
+    @test θ̂w ≈ θ̂
 
     # check predict on `Xnew` with wrong dims
     Xnew = MLJBase.table(
@@ -278,7 +280,7 @@ end
         N = 1000
         rng = StableRNGs.StableRNG(0)
         X = MLJBase.table(rand(rng, N, 3))
-        y = 2*X.x1 + X.x2 - X.x3 + rand(rng, Normal(0,1), N) 
+        y = 2*X.x1 + X.x2 - X.x3 + rand(rng, Normal(0,1), N)
 
         lr = LinearRegressor(fit_intercept=false, offsetcol=:x2)
         fitresult, _, report = fit(lr, 1, X, y)
@@ -312,7 +314,7 @@ end
     @test parameters == ["a", "b", "c", "(Intercept)"]
     intercept = ctable.cols[1][4]
     yhat = predict(lr, fitresult, X)
-    @test mean(cross_entropy(yhat, y)) < 0.6
+    @test cross_entropy(yhat, y) < 0.6
 
     fp = fitted_params(lr, fitresult)
     @test fp.features == [:a, :b, :c]
@@ -326,18 +328,22 @@ end
     # check that by default all possible keys are added in the report
     lr = LinearBinaryClassifier()
     _, _, report = fit(lr, 1, X, y)
-    @test :deviance in keys(report) 
+    @test :deviance in keys(report)
     @test :dof_residual in keys(report)
     @test :stderror in keys(report)
     @test :vcov in keys(report)
     @test :coef_table in keys(report)
+    @test :raw_glm_model in keys(report)
+
+    @test report.raw_glm_model isa GLM.GeneralizedLinearModel
 
     # check that report is valid if only some keys are specified
     lr = LinearBinaryClassifier(report_keys = [:stderror, :deviance])
     _, _, report = fit(lr, 1, X, y)
-    @test :deviance in keys(report) 
+    @test :deviance in keys(report)
     @test :stderror in keys(report)
-    @test :dof_residual ∉ keys(report)
+    @test :dof_residua ∉ keys(report)
+    @test :raw_glm_model ∉ keys(report)
 
     # check that an empty `NamedTuple` is outputed for
     # `report_params === nothing`
