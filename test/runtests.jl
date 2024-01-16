@@ -325,7 +325,8 @@ end
 @testset "Param names in report" begin
     X = (a=[1, 4, 3, 1], b=[2, 0, 1, 4], c=[7, 1, 7, 3])
     y = categorical([true, false, true, false])
-    # check that by default all possible keys are added in the report
+    # check that by default all possible keys are added in the report,
+    # except raw_glm_model:
     lr = LinearBinaryClassifier()
     _, _, report = fit(lr, 1, X, y)
     @test :deviance in keys(report)
@@ -333,17 +334,16 @@ end
     @test :stderror in keys(report)
     @test :vcov in keys(report)
     @test :coef_table in keys(report)
-    @test :raw_glm_model in keys(report)
-
-    @test report.raw_glm_model isa GLM.GeneralizedLinearModel
+    @test :raw_glm_model ∉ keys(report)
 
     # check that report is valid if only some keys are specified
-    lr = LinearBinaryClassifier(report_keys = [:stderror, :deviance])
+    lr = LinearBinaryClassifier(report_keys = [:stderror, :raw_glm_model])
     _, _, report = fit(lr, 1, X, y)
-    @test :deviance in keys(report)
+    @test :deviance ∉ keys(report)
     @test :stderror in keys(report)
-    @test :dof_residua ∉ keys(report)
-    @test :raw_glm_model ∉ keys(report)
+    @test :dof_residual ∉ keys(report)
+    @test :raw_glm_model in keys(report)
+    @test report.raw_glm_model isa GLM.GeneralizedLinearModel
 
     # check that an empty `NamedTuple` is outputed for
     # `report_params === nothing`

@@ -53,8 +53,8 @@ const VALID_KEYS = [
     :coef_table,
     :raw_glm_model,
 ]
-const VALID_KEYS_LIST = join(map(k-> ":$k", VALID_KEYS), ", ", " and ")
-const DEFAULT_KEYS = VALID_KEYS # For more understandable warning mssg by `@mlj_model`.
+const VALID_KEYS_LIST = join(map(k-> "`:$k`", VALID_KEYS), ", ", " and ")
+const DEFAULT_KEYS = setdiff(VALID_KEYS, [:raw_glm_model,])
 const KEYS_TYPE = Union{Nothing, AbstractVector{Symbol}}
 
 @mlj_model mutable struct LinearRegressor <: MMI.Probabilistic
@@ -601,8 +601,8 @@ Here
 - `offsetcol=nothing`: Name of the column to be used as an offset, if any.
    An offset is a variable which is known to have a coefficient of 1.
 
-- `report_keys::Union{Symbol, Nothing}=DEFAULT_KEYS`: vector of keys to be used in
-  the report. Possible keys are: $VALID_KEYS_LIST.
+- `report_keys`: `Vector` of keys for the report. Possible keys are: $VALID_KEYS_LIST. By
+  default only `:raw_glm_model` is excluded.
 
 Train the machine using `fit!(mach, rows=...)`.
 
@@ -728,8 +728,8 @@ Train the machine using `fit!(mach, rows=...)`.
 - `minstepfac::Real=0.001`: Minimum step fraction. Must be between 0 and 1. Lower bound for
   the factor used to update the linear fit.
 
-- `report_keys::Union{Symbol, Nothing}=DEFAULT_KEYS`: keys to be used in the
-  report. Possible keys are: $VALID_KEYS_LIST.
+- `report_keys`: `Vector` of keys for the report. Possible keys are: $VALID_KEYS_LIST. By
+  default only `:raw_glm_model` is excluded.
 
 # Operations
 
@@ -860,8 +860,8 @@ Train the machine using `fit!(mach, rows=...)`.
 - `minstepfac::Real=0.001`: Minimum step fraction. Must be between 0 and 1. Lower bound for
   the factor used to update the linear fit.
 
-- `report_keys::Union{Symbol, Nothing}=DEFAULT_KEYS`: keys to be used in the
-  report. Possible keys are: $VALID_KEYS_LIST.
+- `report_keys`: `Vector` of keys for the report. Possible keys are: $VALID_KEYS_LIST. By
+  default only `:raw_glm_model` is excluded.
 
 # Operations
 
