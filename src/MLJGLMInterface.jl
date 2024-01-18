@@ -51,10 +51,10 @@ const VALID_KEYS = [
     :stderror,
     :vcov,
     :coef_table,
-    :raw_glm_model,
+    :glm_model,
 ]
 const VALID_KEYS_LIST = join(map(k-> "`:$k`", VALID_KEYS), ", ", " and ")
-const DEFAULT_KEYS = setdiff(VALID_KEYS, [:raw_glm_model,])
+const DEFAULT_KEYS = setdiff(VALID_KEYS, [:glm_model,])
 const KEYS_TYPE = Union{Nothing, AbstractVector{Symbol}}
 
 @mlj_model mutable struct LinearRegressor <: MMI.Probabilistic
@@ -295,8 +295,8 @@ function glm_report(glm_model, features, reportkeys)
         end
         report_dict[:coef_table] = coef_table
     end
-    if :raw_glm_model in reportkeys
-        report_dict[:raw_glm_model] = glm_model
+    if :glm_model in reportkeys
+        report_dict[:glm_model] = glm_model
     end
 
     return NamedTuple{Tuple(keys(report_dict))}(values(report_dict))
@@ -602,7 +602,7 @@ Here
    An offset is a variable which is known to have a coefficient of 1.
 
 - `report_keys`: `Vector` of keys for the report. Possible keys are: $VALID_KEYS_LIST. By
-  default only `:raw_glm_model` is excluded.
+  default only `:glm_model` is excluded.
 
 Train the machine using `fit!(mach, rows=...)`.
 
@@ -646,8 +646,8 @@ When all keys are enabled in `report_keys`, the following fields are available i
 - `coef_table`: Table which displays coefficients and summarizes their significance
   and confidence intervals.
 
-- `raw_glm_model`: The raw fitted model returned by `GLM.lm`. Note this points to training
-  data.
+- `glm_model`: The raw fitted model returned by `GLM.lm`. Note this points to training
+  data. Refer to the GLM.jl documentation for usage.
 
 # Examples
 
@@ -729,7 +729,7 @@ Train the machine using `fit!(mach, rows=...)`.
   the factor used to update the linear fit.
 
 - `report_keys`: `Vector` of keys for the report. Possible keys are: $VALID_KEYS_LIST. By
-  default only `:raw_glm_model` is excluded.
+  default only `:glm_model` is excluded.
 
 # Operations
 
@@ -765,8 +765,8 @@ The fields of `report(mach)` are:
 - `coef_table`: Table which displays coefficients and summarizes their significance and
   confidence intervals.
 
-- `raw_glm_model`: The raw fitted model returned by `GLM.glm`. Note this points to training
-  data.
+- `glm_model`: The raw fitted model returned by `GLM.lm`. Note this points to training
+  data. Refer to the GLM.jl documentation for usage.
 
 # Examples
 
@@ -861,7 +861,7 @@ Train the machine using `fit!(mach, rows=...)`.
   the factor used to update the linear fit.
 
 - `report_keys`: `Vector` of keys for the report. Possible keys are: $VALID_KEYS_LIST. By
-  default only `:raw_glm_model` is excluded.
+  default only `:glm_model` is excluded.
 
 # Operations
 
@@ -898,8 +898,8 @@ The fields of `report(mach)` are:
 - `coef_table`: Table which displays coefficients and summarizes their significance and
   confidence intervals.
 
-- `raw_glm_model`: The raw fitted model returned by `GLM.glm`. Note this points to training
-  data.
+- `glm_model`: The raw fitted model returned by `GLM.lm`. Note this points to training
+  data. Refer to the GLM.jl documentation for usage.
 
 
 # Examples
