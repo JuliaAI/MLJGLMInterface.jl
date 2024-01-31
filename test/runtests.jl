@@ -368,3 +368,10 @@ end
     form = MLJGLMInterface.glm_formula(model, [:a, :b]) |> string
     @test form == "y ~ a + b + 1"
 end
+
+@testset "Issue 42" begin
+    X = (a=Float32[1, 2, 3], b=Float32[4, 5, 6])
+    y = categorical([true, true, false])
+    lr = LinearBinaryClassifier()
+    fit(lr, 1, X, y)
+end

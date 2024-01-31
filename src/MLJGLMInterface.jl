@@ -121,7 +121,15 @@ _to_array(v) = collect(v)
 
 When no offset is specified, return `X` and an empty vector.
 """
-split_X_offset(X, offsetcol::Nothing) = (X, Float64[])
+function split_X_offset(X, offsetcol::Nothing)
+    eltypes = map(key -> eltype(X[key]), keys(X))
+    unique_types = unique(eltypes)
+    fallback_type = Float64
+    empty_vector_type = length(unique_types) == 1 ?
+        only(unique_types) :
+        fallback_type
+    (X, empty_vector_type[])
+end
 
 """
     split_X_offset(X, offsetcol::Symbol)
@@ -423,13 +431,19 @@ end
 function MMI.fit(model::LinearBinaryClassifier, verbosity::Int, X, y, w=nothing)
     # apply the model
     decode = y[1]
+    @show typeof(y)
     y_plain = MMI.int(y) .- 1 # 0, 1 of type Int
+    @show w
     wts = check_weights(w, y_plain)
+    @show wts |> typeof
     Xmatrix, offset, features = prepare_inputs(model, X)
     data = glm_data(model, Xmatrix, y_plain, features)
     form = glm_formula(model, features)
+    T = eltype(eltype(X))
+    distribution = Bernoulli{T}(0.5)
+    wts = Float32[]
     fitted_glm_frame = GLM.glm(
-        form, data, Bernoulli(), model.link;
+        form, data, distribution, model.link;
         offset,
         model.maxiter,
         model.atol,
