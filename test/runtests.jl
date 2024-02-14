@@ -49,7 +49,7 @@ expit(X) = 1 ./ (1 .+ exp.(-X))
 
     # test `predict` object
     p_distr = predict(atom_ols, fitresult, selectrows(X, test))
-    dispersion =  MLJGLMInterface.dispersion(fitresult)
+    dispersion =  GLM.dispersion(fitresult.model)
     @test p_distr[1] == Normal(p[1], dispersion)
 
     # test metadata
@@ -103,7 +103,7 @@ end
 
     # check predict on `Xnew` with wrong dims
     Xnew = MLJBase.table(Tables.matrix(X)[:, 1:3], names=Tables.columnnames(X)[1:3])
-    @test_throws DimensionMismatch predict(lr, fitresult, Xnew)
+    @test_throws ErrorException predict(lr, fitresult, Xnew)
 
     fitted_params(pr, fitresult)
 
@@ -158,7 +158,7 @@ end
     Xnew = MLJBase.table(
         Tables.matrix(XTable)[:, 1:3], names=Tables.columnnames(XTable)[1:3]
     )
-    @test_throws DimensionMismatch predict(lcr, fitresult, Xnew)
+    @test_throws ErrorException predict(lcr, fitresult, Xnew)
 
     # Test metadata
     model = lcr
@@ -194,31 +194,14 @@ modeltypes = [LinearRegressor, LinearBinaryClassifier, LinearCountRegressor]
         end
 
     end
-
-    @testset "intercept/offsetcol" for mt in modeltypes
-            X = (x1=[1,2,3], x2=[4,5,6])
-            m = mt(fit_intercept=true, offsetcol=:x2)
-            r = MLJGLMInterface.prepare_inputs(m, X; handle_intercept=true)
-            Xmatrix, offset, features = r
-            @test offset == [4, 5, 6]
-            @test Xmatrix== [1 1;
-                             2 1;
-                             3 1]
-            @test features == [:x1]
-
-            m1 = mt(fit_intercept=true, offsetcol=:x3)
-            @test_throws ArgumentError MLJGLMInterface.prepare_inputs(m1, X)
-    end
-
+    
     @testset "no intercept/no offsetcol" for mt in modeltypes
         X = (x1=[1,2,3], x2=[4,5,6])
         m = mt(fit_intercept=false)
-        r = MLJGLMInterface.prepare_inputs(m, X; handle_intercept=true)
-        Xmatrix, offset, features = r
+        r = MLJGLMInterface.prepare_inputs(m, X)
+        Xcols, offset, features = r
         @test offset == []
-        @test Xmatrix == [1 4;
-                          2 5;
-                          3 6]
+        @test Xcols == (x1 = [1, 2, 3], x2 = [4, 5, 6])
         @test features == [:x1, :x2]
 
         X1 = NamedTuple()
@@ -228,10 +211,10 @@ modeltypes = [LinearRegressor, LinearBinaryClassifier, LinearCountRegressor]
     @testset "offsetcol but no intercept" for mt in modeltypes
         X = (x1=[1,2,3], x2=[4,5,6])
         m = mt(offsetcol=:x1, fit_intercept=false)
-        Xmatrix, offset, features = MLJGLMInterface.prepare_inputs(m, X)
+        Xcols, offset, features = MLJGLMInterface.prepare_inputs(m, X)
 
         @test offset == [1, 2, 3]
-        @test Xmatrix == permutedims([4 5 6])
+        @test Xcols == (x2 = [4, 5, 6],)
         @test features == [:x2]
 
         # throw error for tables with just one column.
@@ -343,7 +326,7 @@ end
     @test :stderror in keys(report)
     @test :dof_residual ∉ keys(report)
     @test :glm_model in keys(report)
-    @test report.glm_model isa GLM.GeneralizedLinearModel
+    @test report.glm_model.model isa GLM.GeneralizedLinearModel
 
     # check that an empty `NamedTuple` is outputed for
     # `report_params === nothing`
@@ -352,8 +335,21 @@ end
     @test report === NamedTuple()
 end
 
+@testset "Categorical predictors" begin
+    X = (x1=[1.,2.,3.], x2 = categorical([0,1,0]))
+    y = categorical([false, false, true])
+
+    mach = machine(LinearBinaryClassifier(), X, y)
+    fit!(mach)
+
+    fp = fitted_params(mach)
+
+    @test fp.features == Symbol.(["x1", "x2: 0", "x2: 1"])
+    @test_throws KeyError predict(mach, (x1 = [2,3,4], x2 = categorical([0,1,2])))
+    @test all(isapprox.(pdf.(predict(mach, X), true), [0,0,1], atol = 1e-3))
+end
+
 @testset "Issue 27" begin
-    @inferred MLJGLMInterface.augment_X(rand(2, 2), false)
     n, p = (100, 2)
     Xmat = rand(p, n)' # note using adjoint
     X = MLJBase.table(Xmat)
