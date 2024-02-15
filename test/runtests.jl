@@ -49,7 +49,7 @@ expit(X) = 1 ./ (1 .+ exp.(-X))
 
     # test `predict` object
     p_distr = predict(atom_ols, fitresult, selectrows(X, test))
-    dispersion =  GLM.dispersion(fitresult.model)
+    dispersion =  MLJGLMInterface.dispersion(fitresult)
     @test p_distr[1] == Normal(p[1], dispersion)
 
     # test metadata
@@ -344,7 +344,7 @@ end
 
     fp = fitted_params(mach)
 
-    @test fp.features == Symbol.(["x1", "x2: 0", "x2: 1"])
+    @test fp.features == [:x1, :x2]
     @test_throws KeyError predict(mach, (x1 = [2,3,4], x2 = categorical([0,1,2])))
     @test all(isapprox.(pdf.(predict(mach, X), true), [0,0,1], atol = 1e-3))
 end
