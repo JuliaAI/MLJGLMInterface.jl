@@ -294,8 +294,8 @@ end
     fitresult, _, report = fit(lr, 1, X, y)
     ctable = last(report)
     parameters = ctable.rownms # Row names.
-    @test parameters == ["a", "b", "c", "(Intercept)"]
-    intercept = ctable.cols[1][4]
+    @test parameters == ["(Intercept)", "a", "b", "c"]
+    intercept = ctable.cols[1][1]
     yhat = predict(lr, fitresult, X)
     @test cross_entropy(yhat, y) < 0.6
 
@@ -359,8 +359,3 @@ end
     fit(lr, 1, X, y)
 end
 
-@testset "Issue 34" begin
-    model = LinearRegressor()
-    form = MLJGLMInterface.glm_formula(model, [:a, :b]) |> string
-    @test form == "y ~ a + b + 1"
-end

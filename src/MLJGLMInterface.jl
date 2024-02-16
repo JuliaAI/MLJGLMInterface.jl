@@ -259,15 +259,6 @@ function glm_report(glm_model, features, reportkeys)
     return NamedTuple{Tuple(keys(report_dict))}(values(report_dict))
 end
 
-function _ensure_intercept_at_end(form::FormulaTerm)
-    fixed_rhs = if first(form.rhs) isa ConstantTerm
-        (form.rhs[2:end]..., form.rhs[1])
-    else
-        form.rhs
-    end
-    return FormulaTerm(form.lhs, fixed_rhs)
-end
-
 """
     glm_formula(model, features::AbstractVector{Symbol}) -> FormulaTerm
 
@@ -278,9 +269,8 @@ function glm_formula(model, features::AbstractVector{Symbol})::FormulaTerm
     # Adding a zero term explicitly disables the intercept.
     # See the StatsModels.jl tests for more information.
     intercept_term = model.fit_intercept ? 1 : 0
-    form = FormulaTerm(Term(:y), sum(term.(features)) + term(intercept_term))
-    fixed_form = _ensure_intercept_at_end(form)
-    return fixed_form
+    form = FormulaTerm(Term(:y), term(intercept_term) + sum(term.(features)))
+    return form
 end
 
 """
@@ -418,8 +408,8 @@ function MMI.fitted_params(model::GLM_MODELS, fitresult)
     coef = coefs(result)
     features = copy(params(result).features)
     if model.fit_intercept
-        intercept = coef[end]
-        coef_ = coef[1:end-1]
+        intercept = coef[1]
+        coef_ = coef[2:end]
     else
         intercept = zero(eltype(coef))
         coef_ = copy(coef)
