@@ -336,17 +336,27 @@ end
 end
 
 @testset "Categorical predictors" begin
-    X = (x1=[1.,2.,3.], x2 = categorical([0,1,0]))
-    y = categorical([false, false, true])
+    X = (x1=[1.,2.,3.,4.], x2 = categorical([0,1,0,0]), x3 = categorical([1, 0, 1,0], ordered=true))
+    y = categorical([false, false, true, true])
 
     mach = machine(LinearBinaryClassifier(), X, y)
     fit!(mach)
-
     fp = fitted_params(mach)
 
-    @test fp.features == [:x1, :x2]
-    @test_throws KeyError predict(mach, (x1 = [2,3,4], x2 = categorical([0,1,2])))
-    @test all(isapprox.(pdf.(predict(mach, X), true), [0,0,1], atol = 1e-3))
+    @test fp.features == [:x1, :x2, :x3]
+    @test_throws KeyError predict(mach, (x1 = [2,3,4], x2 = categorical([0,1,2]), x3 = categorical([1,0,1], ordered=true)))
+    @test all(isapprox.(pdf.(predict(mach, X), true), [0,0,1,1], atol = 1e-3))
+
+    # only a categorical variable, with and without intercept
+    X2 = (; x = X.x2) 
+    y2 = [0., 2., 1., 2.]
+    fitresult, _, report = fit(LinearRegressor(), 1, X2, y2)
+    pred = predict_mean(LinearRegressor(), fitresult, X2)
+    fitresult_nointercept, _, report = fit(LinearRegressor(fit_intercept = false), 1, X2, y2)
+
+    @test all(isapprox.(fitresult.coefs, [1.0, 1.0]))
+    @test all(isapprox.(fitresult_nointercept.coefs, [1.0, 2.0]))
+
 end
 
 @testset "Issue 27" begin
