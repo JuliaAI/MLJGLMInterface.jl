@@ -274,16 +274,6 @@ function glm_formula(model, features::AbstractVector{Symbol})::FormulaTerm
 end
 
 """
-    glm_data(model, Xmatrix, y, features)
-
-Return data which is ready to be passed to `fit(form, data, ...)`.
-"""
-function glm_data(model, Xmatrix, y, features)
-    data = Tables.table([Xmatrix y]; header=[features...; :y])
-    return data
-end
-
-"""
     check_weights(w, y)
 
 Validate observation weights to be used in fitting `Linear/GeneralizedLinearModel` based
