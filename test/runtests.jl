@@ -7,12 +7,62 @@ using Statistics
 using MLJGLMInterface
 using GLM: coeftable
 import GLM
+import MLJTestInterface
 
 using  Distributions: Normal, Poisson, Uniform
 import StableRNGs
 using Tables
 
 expit(X) = 1 ./ (1 .+ exp.(-X))
+
+# TODO: Add more datasets to the following generic interface tests after #45 is merged
+
+@testset "generic interface tests" begin
+    @testset "LinearRegressor" begin
+        for data in [
+                        MLJTestInterface.make_regression(),
+            ]
+            failures, summary = MLJTestInterface.test(
+                [LinearRegressor,],
+                data...;
+                mod=@__MODULE__,
+                verbosity=0, # bump to debug
+                throw=false, # set to true to debug
+            )
+            @test isempty(failures)
+        end
+    end
+
+    @testset "LinearCountRegressor" begin
+        for data in [
+            MLJTestInterface.make_count(),
+            ]
+            failures, summary = MLJTestInterface.test(
+                [LinearCountRegressor,],
+                data...;
+                mod=@__MODULE__,
+                verbosity=0, # bump to debug
+                throw=false, # set to true to debug
+            )
+            @test isempty(failures)
+        end
+    end
+
+    @testset "LinearBinaryClassifier" begin
+        for data in [
+            MLJTestInterface.make_binary(),
+            ]
+            failures, summary = MLJTestInterface.test(
+                [LinearBinaryClassifier,],
+                data...;
+                mod=@__MODULE__,
+                verbosity=0, # bump to debug
+                throw=false, # set to true to debug
+            )
+        end
+    end
+end
+
 ###
 ### OLSREGRESSOR
 ###
