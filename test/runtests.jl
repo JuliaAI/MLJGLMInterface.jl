@@ -229,12 +229,17 @@ end
 
 @testset "Test offsetting models" begin
     @testset "Test split_X_offset" begin
-        rng = StableRNGs.StableRNG(123)
-        N = 100
         X = (x1=[1,2,3], x2=[4,5,6])
         @test MLJGLMInterface.split_X_offset(X, nothing) == (X, Float64[])
         @test MLJGLMInterface.split_X_offset(X, :x1) == ((x2=[4,5,6],), [1,2,3])
 
+        lr = LinearRegressor(fit_intercept = false, offsetcol = :x1)
+        fitresult, _, report = fit(lr, 1, X, [5, 7, 9])
+        yhat = predict_mean(lr, fitresult, (x1 = [2, 3, 4], x2 = [5, 6, 7]))
+        @test yhat == [7.0, 9.0, 11.0]
+
+        rng = StableRNGs.StableRNG(123)
+        N = 100
         X = MLJBase.table(rand(rng, N, 3))
         Xnew, offset = MLJGLMInterface.split_X_offset(X, :x2)
         @test offset isa Vector
