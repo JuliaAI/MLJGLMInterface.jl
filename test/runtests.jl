@@ -30,7 +30,7 @@ X = merge(
     Tables.columntable(X_regression),
     (; outlook, temperature),
 )
-y_binary = categorical(temperature .== "mild" .| outlook .== "sunny")
+y_binary = categorical((temperature .== "mild") .| (outlook .== "sunny"))
 y_count = map(X.x1) do x
     floor(Int, 10*abs(x))
 end
